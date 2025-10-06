@@ -4,7 +4,9 @@ import express from 'express'
 import logger from 'morgan'
 import { testConnection } from './config/database.js'
 
+import DishCategoriesRouter from './routes/dishCategories.js'
 import { DishesRouter } from './routes/dishes.js'
+import IngredientCategoriesRouter from './routes/ingredientCategories.js'
 import { IngredientsRouter } from './routes/ingredients.js'
 import { PurchasesRouter } from './routes/purchases.js'
 import { SalesRouter } from './routes/sales.js'
@@ -23,8 +25,10 @@ app.use(express.urlencoded({ extended: true }))
 const ENDPOINTS = {
   Health: '/health',
   Dishes: '/api/dishes',
+  DishCategories: '/api/dish-categories',
   Suppliers: '/api/suppliers',
   Ingredients: '/api/ingredients',
+  IngredientCategories: '/api/ingredient-categories',
   Purchases: '/api/purchases',
   Sales: '/api/sales'
 }
@@ -35,8 +39,10 @@ app.get('/', (req, res) => {
     endpoints: {
       health: ENDPOINTS.Health,
       dishes: ENDPOINTS.Dishes,
+      dishCategories: ENDPOINTS.DishCategories,
       suppliers: ENDPOINTS.Suppliers,
       ingredients: ENDPOINTS.Ingredients,
+      ingredientCategories: ENDPOINTS.IngredientCategories,
       purchases: ENDPOINTS.Purchases,
       sales: ENDPOINTS.Sales
     }
@@ -76,8 +82,10 @@ app.get('/endpoints', (req, res) => {
 })
 
 app.use('/api/dishes', DishesRouter)
+app.use('/api/dish-categories', DishCategoriesRouter)
 app.use('/api/suppliers', SuppliersRouter)
 app.use('/api/ingredients', IngredientsRouter)
+app.use('/api/ingredient-categories', IngredientCategoriesRouter)
 app.use('/api/purchases', PurchasesRouter)
 app.use('/api/sales', SalesRouter)
 
@@ -88,8 +96,10 @@ app.use((req, res) => {
     availableEndpoints: {
       health: ENDPOINTS.Health,
       dishes: ENDPOINTS.Dishes,
+      dishCategories: ENDPOINTS.DishCategories,
       suppliers: ENDPOINTS.Suppliers,
       ingredients: ENDPOINTS.Ingredients,
+      ingredientCategories: ENDPOINTS.IngredientCategories,
       purchases: ENDPOINTS.Purchases,
       sales: ENDPOINTS.Sales
     }

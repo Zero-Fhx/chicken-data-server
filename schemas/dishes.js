@@ -3,7 +3,7 @@ import z from 'zod'
 const dishSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
+  categoryId: z.coerce.number().int().min(1, 'Invalid category ID').optional().default(1),
   price: z.coerce.number().min(0, 'Price must be a positive number'),
   status: z.enum(['Active', 'Inactive']).optional().nullable()
 })

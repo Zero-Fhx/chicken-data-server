@@ -7,19 +7,27 @@ import { SupplierValidates } from '../utils/validates.js'
 export const SuppliersController = {
   async getAll (req, res) {
     try {
-      const { page = 1, pageSize = 10 } = req.query
-      const result = await SupplierModel.getAll({ page, limit: pageSize })
+      const { page = 1, pageSize = 10, search, status } = req.query
+      
+      const filters = {}
+      if (search) filters.search = search
+      if (status) filters.status = status
+      
+      const result = await SupplierModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-      if (pagination.page > pagination.pageCount) {
+      
+      if (pagination.page > pagination.pageCount && result.total > 0) {
         return handlePageError({ res })
       }
+      
       const transformedData = result.data.map(supplier => transformSupplier(supplier))
 
       return handleResponse({
         res,
         data: transformedData,
         message: 'Suppliers retrieved successfully',
-        pagination
+        pagination,
+        filters: Object.keys(filters).length > 0 ? filters : undefined
       })
     } catch (error) {
       return handleError({ res, error })

@@ -1,3 +1,4 @@
+import { ValidateCategory, ValidateCategoryId, ValidatePartialCategory } from '../schemas/categories.js'
 import { ValidateDish, ValidateDishId, ValidatePartialDish, ValidatePartialIdDish } from '../schemas/dishes.js'
 import { ValidateIngredient, ValidateIngredientId, ValidatePartialIdIngredient, ValidatePartialIngredient } from '../schemas/ingredients.js'
 import { ValidatePartialIdPurchase, ValidatePartialPurchase, ValidatePurchase, ValidatePurchaseId } from '../schemas/purchases.js'
@@ -20,6 +21,21 @@ export const DishValidates = {
 
   PartialIdDish: (data) => {
     return ValidatePartialIdDish(data)
+  }
+}
+
+export const CategoryValidates = {
+
+  Category: (data) => {
+    return ValidateCategory(data)
+  },
+
+  CategoryId: (data) => {
+    return ValidateCategoryId(data)
+  },
+
+  PartialCategory: (data) => {
+    return ValidatePartialCategory(data)
   }
 }
 

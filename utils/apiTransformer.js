@@ -7,9 +7,14 @@ export const transformDish = (dish) => {
     attributes: {
       name: dish.name,
       description: dish.description,
-      category: dish.category,
+      category: {
+        id: dish.category_id,
+        name: dish.category_name
+      },
       price: dish.price,
-      status: dish.status
+      status: dish.status,
+      createdAt: dish.created_at,
+      updatedAt: dish.updated_at
     }
   }
 }
@@ -26,7 +31,10 @@ export const transformSupplier = (supplier) => {
       phone: supplier.phone,
       email: supplier.email,
       address: supplier.address,
-      contact_person: supplier.contact_person
+      contactPerson: supplier.contact_person,
+      status: supplier.status,
+      createdAt: supplier.created_at,
+      updatedAt: supplier.updated_at
     }
   }
 }
@@ -40,10 +48,15 @@ export const transformIngredient = (ingredient) => {
     attributes: {
       name: ingredient.name,
       unit: ingredient.unit,
-      category: ingredient.category,
+      category: {
+        id: ingredient.category_id,
+        name: ingredient.category_name
+      },
       status: ingredient.status,
       stock: ingredient.stock,
-      minimum_stock: ingredient.minimum_stock
+      minimumStock: ingredient.minimum_stock,
+      createdAt: ingredient.created_at,
+      updatedAt: ingredient.updated_at
     }
   }
 }
@@ -56,8 +69,10 @@ export const transformPurchaseDetail = (detail) => {
     type: 'purchaseDetail',
     attributes: {
       quantity: detail.quantity,
-      unit_price: detail.unit_price,
-      subtotal: detail.subtotal
+      unitPrice: detail.unit_price,
+      subtotal: detail.subtotal,
+      createdAt: detail.created_at,
+      updatedAt: detail.updated_at
     }
   }
 
@@ -65,7 +80,9 @@ export const transformPurchaseDetail = (detail) => {
     const ingredient = {
       ingredient_id: detail.ingredient_id,
       name: detail.ingredient_name,
-      unit: detail.ingredient_unit
+      unit: detail.ingredient_unit,
+      category_id: detail.ingredient_category_id,
+      category_name: detail.ingredient_category_name
     }
     transformed.attributes.ingredient = transformIngredient(ingredient)
   }
@@ -80,9 +97,12 @@ export const transformPurchase = (purchase) => {
     id: purchase.purchase_id,
     type: 'purchase',
     attributes: {
-      purchase_date: purchase.purchase_date,
+      purchaseDate: purchase.purchase_date,
       notes: purchase.notes,
-      total: purchase.total
+      total: purchase.total,
+      status: purchase.status,
+      createdAt: purchase.created_at,
+      updatedAt: purchase.updated_at
     }
   }
 
@@ -94,7 +114,10 @@ export const transformPurchase = (purchase) => {
       phone: purchase.phone,
       email: purchase.email,
       address: purchase.address,
-      contact_person: purchase.contact_person
+      contact_person: purchase.contact_person,
+      status: purchase.supplier_status,
+      created_at: purchase.supplier_created_at,
+      updated_at: purchase.supplier_updated_at
     }
     transformed.attributes.supplier = transformSupplier(supplier)
   }
@@ -114,9 +137,11 @@ export const transformSaleDetail = (detail) => {
     type: 'saleDetail',
     attributes: {
       quantity: detail.quantity,
-      unit_price: detail.unit_price,
+      unitPrice: detail.unit_price,
       discount: detail.discount,
-      subtotal: detail.subtotal
+      subtotal: detail.subtotal,
+      createdAt: detail.created_at,
+      updatedAt: detail.updated_at
     }
   }
 
@@ -124,7 +149,8 @@ export const transformSaleDetail = (detail) => {
     const dish = {
       dish_id: detail.dish_id,
       name: detail.dish_name,
-      category: detail.dish_category
+      category_id: detail.dish_category_id,
+      category_name: detail.dish_category_name
     }
     transformed.attributes.dish = transformDish(dish)
   }
@@ -139,10 +165,13 @@ export const transformSale = (sale) => {
     id: sale.sale_id,
     type: 'sale',
     attributes: {
-      sale_date: sale.sale_date,
+      saleDate: sale.sale_date,
       customer: sale.customer,
       notes: sale.notes,
-      total: sale.total
+      total: sale.total,
+      status: sale.status,
+      createdAt: sale.created_at,
+      updatedAt: sale.updated_at
     }
   }
 
@@ -151,4 +180,36 @@ export const transformSale = (sale) => {
   }
 
   return transformed
+}
+
+export const transformDishCategory = (category) => {
+  if (!category) return null
+
+  return {
+    id: category.category_id,
+    type: 'dishCategory',
+    attributes: {
+      name: category.name,
+      description: category.description,
+      status: category.status,
+      createdAt: category.created_at,
+      updatedAt: category.updated_at
+    }
+  }
+}
+
+export const transformIngredientCategory = (category) => {
+  if (!category) return null
+
+  return {
+    id: category.category_id,
+    type: 'ingredientCategory',
+    attributes: {
+      name: category.name,
+      description: category.description,
+      status: category.status,
+      createdAt: category.created_at,
+      updatedAt: category.updated_at
+    }
+  }
 }

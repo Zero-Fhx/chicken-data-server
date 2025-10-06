@@ -6,7 +6,8 @@ const supplierSchema = z.object({
   phone: z.string().max(20, 'Phone must be 20 characters or less').optional().nullable(),
   email: z.email('Invalid email format').optional().nullable(),
   address: z.string().max(150, 'Address must be 150 characters or less').optional().nullable(),
-  contact_person: z.string().max(100, 'Contact person must be 100 characters or less').optional().nullable()
+  contact_person: z.string().max(100, 'Contact person must be 100 characters or less').optional().nullable(),
+  status: z.enum(['Active', 'Inactive']).optional().nullable()
 })
 
 export function ValidateSupplier (data) {

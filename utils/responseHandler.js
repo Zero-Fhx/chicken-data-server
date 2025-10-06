@@ -1,9 +1,10 @@
-export const handleResponse = ({ res, status = 200, data = null, message = null, pagination = null }) => {
+export const handleResponse = ({ res, status = 200, data = null, message = null, pagination = null, filters = null }) => {
   const response = {
     success: status >= 200 && status < 300,
     ...(data !== null && { data }),
     ...(message !== null && { message }),
     ...(pagination !== null && { meta: { pagination } }),
+    ...(filters !== null && { filters }),
     timestamp: new Date().toISOString()
   }
 

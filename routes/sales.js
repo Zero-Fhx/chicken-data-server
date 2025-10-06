@@ -3,7 +3,6 @@ import { SalesController } from '../controllers/sales.js'
 
 export const SalesRouter = Router()
 
-// Rutas para ventas
 SalesRouter.get('/', SalesController.getAll)
 SalesRouter.get('/:id', SalesController.getById)
 SalesRouter.get('/:id/details', SalesController.getSaleDetails)

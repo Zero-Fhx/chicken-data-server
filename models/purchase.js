@@ -2,18 +2,29 @@ import pool from '../config/database.js'
 import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
 
 export const PurchaseModel = {
-  async getAll ({ page = 1, limit = 10 } = {}) {
+  async getAll ({ page = 1, limit = 10, status } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
-      const [purchaseRows] = await pool.query(`
+      
+      let query = `
         SELECT 
           p.*,
           s.name as supplier_name 
         FROM purchases p 
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
-        ORDER BY p.purchase_date DESC, p.purchase_id DESC
-        LIMIT ? OFFSET ?
-      `, [parseInt(limit), offset])
+        WHERE p.deleted_at IS NULL
+      `
+      const params = []
+
+      if (status) {
+        query += ' AND p.status = ?'
+        params.push(status)
+      }
+
+      query += ' ORDER BY p.purchase_date DESC, p.purchase_id DESC LIMIT ? OFFSET ?'
+      params.push(parseInt(limit), offset)
+
+      const [purchaseRows] = await pool.query(query, params)
 
       for (const purchase of purchaseRows) {
         const [detailRows] = await pool.query(`
@@ -29,7 +40,15 @@ export const PurchaseModel = {
         purchase.details = detailRows
       }
 
-      const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM purchases')
+      let countQuery = 'SELECT COUNT(*) AS total FROM purchases WHERE deleted_at IS NULL'
+      const countParams = []
+      
+      if (status) {
+        countQuery += ' AND status = ?'
+        countParams.push(status)
+      }
+
+      const [[{ total }]] = await pool.query(countQuery, countParams)
       return { data: purchaseRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)
@@ -198,6 +217,10 @@ export const PurchaseModel = {
         throw new NotFoundError('Purchase not found')
       }
 
+      if (purchaseToDelete.deleted_at !== null) {
+        throw new BadRequestError('Purchase is already cancelled')
+      }
+
       for (const detail of purchaseToDelete.details) {
         await connection.query(
           'UPDATE ingredients SET stock = stock - ? WHERE ingredient_id = ?',
@@ -205,12 +228,14 @@ export const PurchaseModel = {
         )
       }
 
-      await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
-      await connection.query('DELETE FROM purchases WHERE purchase_id = ?', [id])
+      await connection.query(
+        'UPDATE purchases SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = ?',
+        ['Cancelled', id]
+      )
 
       await connection.commit()
 
-      return purchaseToDelete
+      return await this.getById(id)
     } catch (error) {
       await connection.rollback()
       if (isCustomUserError(error)) {

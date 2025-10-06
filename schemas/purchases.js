@@ -10,6 +10,7 @@ const purchaseSchema = z.object({
   supplier_id: z.coerce.number().min(1, 'Supplier ID must be a positive number').optional().nullable(),
   purchase_date: z.iso.date('Purchase date must be in YYYY-MM-DD format').optional(),
   notes: z.string().optional().nullable(),
+  status: z.enum(['Completed', 'Cancelled']).optional().nullable(),
   details: z.array(purchaseDetailSchema).min(1, 'Purchase must have at least one detail item')
 })
 
@@ -17,6 +18,7 @@ const partialPurchaseSchema = z.object({
   supplier_id: z.coerce.number().min(1, 'Supplier ID must be a positive number').optional().nullable(),
   purchase_date: z.iso.date('Purchase date must be in YYYY-MM-DD format').optional(),
   notes: z.string().optional().nullable(),
+  status: z.enum(['Completed', 'Cancelled']).optional().nullable(),
   details: z.array(purchaseDetailSchema).min(1, 'Purchase must have at least one detail item').optional()
 })
 

@@ -1,33 +1,31 @@
-import { IngredientModel } from '../models/ingredient.js'
-import { transformIngredient } from '../utils/apiTransformer.js'
+import { IngredientCategoryModel } from '../models/ingredientCategory.js'
+import { transformIngredientCategory } from '../utils/apiTransformer.js'
 import { getPagination } from '../utils/pagination.js'
 import { handleError, handlePageError, handleResponse, handleValidationError } from '../utils/responseHandler.js'
-import { IngredientValidates } from '../utils/validates.js'
+import { CategoryValidates } from '../utils/validates.js'
 
-export const IngredientsController = {
+export const IngredientCategoriesController = {
   async getAll (req, res) {
     try {
-      const { page = 1, pageSize = 10, search, categoryId, status, lowStock } = req.query
+      const { page = 1, pageSize = 10, search, status } = req.query
       
       const filters = {}
       if (search) filters.search = search
-      if (categoryId) filters.categoryId = parseInt(categoryId)
       if (status) filters.status = status
-      if (lowStock) filters.lowStock = lowStock
       
-      const result = await IngredientModel.getAll({ page, limit: pageSize, filters })
+      const result = await IngredientCategoryModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
       
       if (pagination.page > pagination.pageCount && result.total > 0) {
         return handlePageError({ res })
       }
       
-      const transformedData = result.data.map(ingredient => transformIngredient(ingredient))
+      const transformedData = result.data.map(category => transformIngredientCategory(category))
 
       return handleResponse({
         res,
         data: transformedData,
-        message: 'Ingredients retrieved successfully',
+        message: 'Ingredient categories retrieved successfully',
         pagination,
         filters: Object.keys(filters).length > 0 ? filters : undefined
       })
@@ -37,21 +35,21 @@ export const IngredientsController = {
   },
 
   async getById (req, res) {
-    const idValidation = IngredientValidates.IngredientId(req.params)
+    const validation = CategoryValidates.CategoryId(req.params)
 
-    if (!idValidation.success) {
-      return handleValidationError({ res, status: 400, error: idValidation.error })
+    if (!validation.success) {
+      return handleValidationError({ res, status: 400, error: validation.error })
     }
 
     try {
       const { id } = req.params
-      const ingredient = await IngredientModel.getById(id)
-      const transformedData = transformIngredient(ingredient)
+      const category = await IngredientCategoryModel.getById(id)
+      const transformedData = transformIngredientCategory(category)
 
       return handleResponse({
         res,
         data: transformedData,
-        message: 'Ingredient retrieved successfully'
+        message: 'Ingredient category retrieved successfully'
       })
     } catch (error) {
       return handleError({ res, error })
@@ -59,21 +57,21 @@ export const IngredientsController = {
   },
 
   async create (req, res) {
-    const validation = IngredientValidates.Ingredient(req.body)
+    const validation = CategoryValidates.Category(req.body)
 
     if (!validation.success) {
       return handleValidationError({ res, status: 400, error: validation.error })
     }
 
     try {
-      const ingredient = await IngredientModel.create(req.body)
-      const transformedData = transformIngredient(ingredient)
+      const category = await IngredientCategoryModel.create(req.body)
+      const transformedData = transformIngredientCategory(category)
 
       return handleResponse({
         res,
         status: 201,
         data: transformedData,
-        message: 'Ingredient created successfully'
+        message: 'Ingredient category created successfully'
       })
     } catch (error) {
       return handleError({ res, error })
@@ -81,13 +79,13 @@ export const IngredientsController = {
   },
 
   async update (req, res) {
-    const idValidation = IngredientValidates.IngredientId(req.params)
+    const idValidation = CategoryValidates.CategoryId(req.params)
 
     if (!idValidation.success) {
       return handleValidationError({ res, status: 400, error: idValidation.error })
     }
 
-    const bodyValidation = IngredientValidates.PartialIngredient(req.body)
+    const bodyValidation = CategoryValidates.PartialCategory(req.body)
 
     if (!bodyValidation.success) {
       return handleValidationError({ res, status: 400, error: bodyValidation.error })
@@ -95,13 +93,13 @@ export const IngredientsController = {
 
     try {
       const { id } = req.params
-      const ingredient = await IngredientModel.update(id, req.body)
-      const transformedData = transformIngredient(ingredient)
+      const category = await IngredientCategoryModel.update(id, req.body)
+      const transformedData = transformIngredientCategory(category)
 
       return handleResponse({
         res,
         data: transformedData,
-        message: 'Ingredient updated successfully'
+        message: 'Ingredient category updated successfully'
       })
     } catch (error) {
       return handleError({ res, error })
@@ -109,7 +107,7 @@ export const IngredientsController = {
   },
 
   async delete (req, res) {
-    const validation = IngredientValidates.IngredientId(req.params)
+    const validation = CategoryValidates.CategoryId(req.params)
 
     if (!validation.success) {
       return handleValidationError({ res, status: 400, error: validation.error })
@@ -117,13 +115,13 @@ export const IngredientsController = {
 
     try {
       const { id } = req.params
-      const ingredient = await IngredientModel.delete(id)
-      const transformedData = transformIngredient(ingredient)
+      const category = await IngredientCategoryModel.delete(id)
+      const transformedData = transformIngredientCategory(category)
 
       return handleResponse({
         res,
         data: transformedData,
-        message: 'Ingredient deleted successfully'
+        message: 'Ingredient category deleted successfully'
       })
     } catch (error) {
       return handleError({ res, error })

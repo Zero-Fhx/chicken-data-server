@@ -3,7 +3,6 @@ import { PurchasesController } from '../controllers/purchases.js'
 
 export const PurchasesRouter = Router()
 
-// Rutas para compras
 PurchasesRouter.get('/', PurchasesController.getAll)
 PurchasesRouter.get('/:id', PurchasesController.getById)
 PurchasesRouter.get('/:id/details', PurchasesController.getPurchaseDetails)

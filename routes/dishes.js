@@ -3,7 +3,6 @@ import { DishesController } from '../controllers/dishes.js'
 
 export const DishesRouter = Router()
 
-// Rutas para platos
 DishesRouter.get('/', DishesController.getAll)
 DishesRouter.get('/:id', DishesController.getById)
 DishesRouter.post('/', DishesController.create)

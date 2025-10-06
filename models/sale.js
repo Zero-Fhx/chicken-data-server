@@ -2,30 +2,50 @@ import pool from '../config/database.js'
 import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
 
 export const SaleModel = {
-  async getAll ({ page = 1, limit = 10 } = {}) {
+  async getAll ({ page = 1, limit = 10, status } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
-      const [saleRows] = await pool.query(`
+      
+      let query = `
         SELECT * FROM sales 
-        ORDER BY sale_date DESC, sale_id DESC
-        LIMIT ? OFFSET ?
-      `, [parseInt(limit), offset])
+        WHERE deleted_at IS NULL
+      `
+      const params = []
+
+      if (status) {
+        query += ' AND status = ?'
+        params.push(status)
+      }
+
+      query += ' ORDER BY sale_date DESC, sale_id DESC LIMIT ? OFFSET ?'
+      params.push(parseInt(limit), offset)
+
+      const [saleRows] = await pool.query(query, params)
 
       for (const sale of saleRows) {
         const [detailRows] = await pool.query(`
           SELECT 
             sd.*,
             d.name as dish_name,
-            d.category as dish_category
+            dc.name as dish_category
           FROM sale_details sd
           LEFT JOIN dishes d ON sd.dish_id = d.dish_id
+          LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
           WHERE sd.sale_id = ?
           ORDER BY sd.sale_detail_id
         `, [sale.sale_id])
         sale.details = detailRows
       }
 
-      const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM sales')
+      let countQuery = 'SELECT COUNT(*) AS total FROM sales WHERE deleted_at IS NULL'
+      const countParams = []
+      
+      if (status) {
+        countQuery += ' AND status = ?'
+        countParams.push(status)
+      }
+
+      const [[{ total }]] = await pool.query(countQuery, countParams)
       return { data: saleRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)
@@ -49,9 +69,10 @@ export const SaleModel = {
         SELECT 
           sd.*,
           d.name as dish_name,
-          d.category as dish_category
+          dc.name as dish_category
         FROM sale_details sd
         LEFT JOIN dishes d ON sd.dish_id = d.dish_id
+        LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
         WHERE sd.sale_id = ?
         ORDER BY sd.sale_detail_id
       `, [id])
@@ -207,13 +228,18 @@ export const SaleModel = {
 
       const saleToDelete = await this.getById(id)
 
-      await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
+      if (saleToDelete.deleted_at !== null) {
+        throw new BadRequestError('Sale is already cancelled')
+      }
 
-      await connection.query('DELETE FROM sales WHERE sale_id = ?', [id])
+      await connection.query(
+        'UPDATE sales SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE sale_id = ?',
+        ['Cancelled', id]
+      )
 
       await connection.commit()
 
-      return saleToDelete
+      return await this.getById(id)
     } catch (error) {
       await connection.rollback()
       if (isCustomUserError(error)) {
@@ -241,9 +267,10 @@ export const SaleModel = {
         SELECT 
           sd.*,
           d.name as dish_name,
-          d.category as dish_category
+          dc.name as dish_category
         FROM sale_details sd
         LEFT JOIN dishes d ON sd.dish_id = d.dish_id
+        LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
         WHERE sd.sale_id = ?
         ORDER BY sd.sale_detail_id
         LIMIT ? OFFSET ?

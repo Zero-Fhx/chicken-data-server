@@ -11,6 +11,7 @@ const saleSchema = z.object({
   sale_date: z.iso.date('Sale date must be in YYYY-MM-DD format').optional(),
   customer: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  status: z.enum(['Completed', 'Cancelled']).optional().nullable(),
   details: z.array(saleDetailSchema).min(1, 'Sale must have at least one detail item')
 })
 
@@ -18,6 +19,7 @@ const partialSaleSchema = z.object({
   sale_date: z.iso.date('Sale date must be in YYYY-MM-DD format').optional(),
   customer: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  status: z.enum(['Completed', 'Cancelled']).optional().nullable(),
   details: z.array(saleDetailSchema).min(1, 'Sale must have at least one detail item').optional()
 })
 
