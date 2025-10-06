@@ -4,7 +4,7 @@ export const handleResponse = ({ res, status = 200, data = null, message = null,
     ...(data !== null && { data }),
     ...(message !== null && { message }),
     ...(pagination !== null && { meta: { pagination } }),
-    ...(filters !== null && { filters }),
+    ...(filters !== null && Object.keys(filters).length > 0 && { filters }),
     timestamp: new Date().toISOString()
   }
 

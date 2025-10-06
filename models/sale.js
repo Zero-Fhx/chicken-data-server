@@ -26,8 +26,15 @@ export const SaleModel = {
         const [detailRows] = await pool.query(`
           SELECT 
             sd.*,
+            d.dish_id,
             d.name as dish_name,
-            dc.name as dish_category
+            d.description as dish_description,
+            d.price as dish_price,
+            d.status as dish_status,
+            d.created_at as dish_created_at,
+            d.updated_at as dish_updated_at,
+            dc.category_id as dish_category_id,
+            dc.name as dish_category_name
           FROM sale_details sd
           LEFT JOIN dishes d ON sd.dish_id = d.dish_id
           LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
@@ -68,8 +75,15 @@ export const SaleModel = {
       const [detailRows] = await pool.query(`
         SELECT 
           sd.*,
+          d.dish_id,
           d.name as dish_name,
-          dc.name as dish_category
+          d.description as dish_description,
+          d.price as dish_price,
+          d.status as dish_status,
+          d.created_at as dish_created_at,
+          d.updated_at as dish_updated_at,
+          dc.category_id as dish_category_id,
+          dc.name as dish_category_name
         FROM sale_details sd
         LEFT JOIN dishes d ON sd.dish_id = d.dish_id
         LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id

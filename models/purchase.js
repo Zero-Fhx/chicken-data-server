@@ -9,7 +9,16 @@ export const PurchaseModel = {
       let query = `
         SELECT 
           p.*,
-          s.name as supplier_name 
+          s.supplier_id,
+          s.name as supplier_name,
+          s.ruc as supplier_ruc,
+          s.phone as supplier_phone,
+          s.email as supplier_email,
+          s.address as supplier_address,
+          s.contact_person as supplier_contact_person,
+          s.status as supplier_status,
+          s.created_at as supplier_created_at,
+          s.updated_at as supplier_updated_at
         FROM purchases p 
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
         WHERE p.deleted_at IS NULL
@@ -30,10 +39,19 @@ export const PurchaseModel = {
         const [detailRows] = await pool.query(`
           SELECT 
             pd.*,
+            i.ingredient_id,
             i.name as ingredient_name,
-            i.unit as ingredient_unit
+            i.unit as ingredient_unit,
+            i.status as ingredient_status,
+            i.stock as ingredient_stock,
+            i.minimum_stock as ingredient_minimum_stock,
+            i.created_at as ingredient_created_at,
+            i.updated_at as ingredient_updated_at,
+            ic.category_id as ingredient_category_id,
+            ic.name as ingredient_category_name
           FROM purchase_details pd
           LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
+          LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
           WHERE pd.purchase_id = ?
           ORDER BY pd.purchase_detail_id
         `, [purchase.purchase_id])
@@ -60,7 +78,16 @@ export const PurchaseModel = {
       const [purchaseRows] = await pool.query(`
         SELECT 
           p.*,
-          s.name as supplier_name 
+          s.supplier_id,
+          s.name as supplier_name,
+          s.ruc as supplier_ruc,
+          s.phone as supplier_phone,
+          s.email as supplier_email,
+          s.address as supplier_address,
+          s.contact_person as supplier_contact_person,
+          s.status as supplier_status,
+          s.created_at as supplier_created_at,
+          s.updated_at as supplier_updated_at
         FROM purchases p 
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
         WHERE p.purchase_id = ?
@@ -75,10 +102,19 @@ export const PurchaseModel = {
       const [detailRows] = await pool.query(`
         SELECT 
           pd.*,
+          i.ingredient_id,
           i.name as ingredient_name,
-          i.unit as ingredient_unit
+          i.unit as ingredient_unit,
+          i.status as ingredient_status,
+          i.stock as ingredient_stock,
+          i.minimum_stock as ingredient_minimum_stock,
+          i.created_at as ingredient_created_at,
+          i.updated_at as ingredient_updated_at,
+          ic.category_id as ingredient_category_id,
+          ic.name as ingredient_category_name
         FROM purchase_details pd
         LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
+        LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
         WHERE pd.purchase_id = ?
         ORDER BY pd.purchase_detail_id
       `, [id])
