@@ -8,18 +8,18 @@ export const SuppliersController = {
   async getAll (req, res) {
     try {
       const { page = 1, pageSize = 10, search, status } = req.query
-      
+
       const filters = {}
       if (search) filters.search = search
       if (status) filters.status = status
-      
+
       const result = await SupplierModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-      
+
       if (pagination.page > pagination.pageCount && result.total > 0) {
         return handlePageError({ res })
       }
-      
+
       const transformedData = result.data.map(supplier => transformSupplier(supplier))
 
       return handleResponse({

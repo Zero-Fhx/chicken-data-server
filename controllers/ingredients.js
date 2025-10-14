@@ -8,20 +8,20 @@ export const IngredientsController = {
   async getAll (req, res) {
     try {
       const { page = 1, pageSize = 10, search, categoryId, status, lowStock } = req.query
-      
+
       const filters = {}
       if (search) filters.search = search
       if (categoryId) filters.categoryId = parseInt(categoryId)
       if (status) filters.status = status
       if (lowStock) filters.lowStock = lowStock
-      
+
       const result = await IngredientModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-      
+
       if (pagination.page > pagination.pageCount && result.total > 0) {
         return handlePageError({ res })
       }
-      
+
       const transformedData = result.data.map(ingredient => transformIngredient(ingredient))
 
       return handleResponse({

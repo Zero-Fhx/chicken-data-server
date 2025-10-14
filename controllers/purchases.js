@@ -10,14 +10,18 @@ import { PurchaseValidates } from '../utils/validates.js'
 export const PurchasesController = {
   async getAll (req, res) {
     try {
-      const { page = 1, pageSize = 10, status } = req.query
-      
-      const filters = {}
-      if (status) filters.status = status
+      const { page = 1, pageSize = 10, search, status, supplierId, startDate, endDate } = req.query
 
-      const result = await PurchaseModel.getAll({ page, limit: pageSize, ...filters })
+      const filters = {}
+      if (search) filters.search = search
+      if (status) filters.status = status
+      if (supplierId) filters.supplierId = parseInt(supplierId)
+      if (startDate) filters.startDate = startDate
+      if (endDate) filters.endDate = endDate
+
+      const result = await PurchaseModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-      if (pagination.page > pagination.pageCount) {
+      if (pagination.page > pagination.pageCount && result.total > 0) {
         return handlePageError({ res })
       }
 
@@ -28,7 +32,7 @@ export const PurchasesController = {
         data: transformedData,
         message: 'Purchases retrieved successfully',
         pagination,
-        filters
+        filters: Object.keys(filters).length > 0 ? filters : undefined
       })
     } catch (error) {
       return handleError({ res, error })

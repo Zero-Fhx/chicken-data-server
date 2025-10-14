@@ -10,14 +10,17 @@ import { SaleValidates } from '../utils/validates.js'
 export const SalesController = {
   async getAll (req, res) {
     try {
-      const { page = 1, pageSize = 10, status } = req.query
-      
-      const filters = {}
-      if (status) filters.status = status
+      const { page = 1, pageSize = 10, search, status, startDate, endDate } = req.query
 
-      const result = await SaleModel.getAll({ page, limit: pageSize, ...filters })
+      const filters = {}
+      if (search) filters.search = search
+      if (status) filters.status = status
+      if (startDate) filters.startDate = startDate
+      if (endDate) filters.endDate = endDate
+
+      const result = await SaleModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-      if (pagination.page > pagination.pageCount) {
+      if (pagination.page > pagination.pageCount && result.total > 0) {
         return handlePageError({ res })
       }
 
@@ -28,7 +31,7 @@ export const SalesController = {
         data: transformedData,
         message: 'Sales retrieved successfully',
         pagination,
-        filters
+        filters: Object.keys(filters).length > 0 ? filters : undefined
       })
     } catch (error) {
       return handleError({ res, status: error.statusCode || 500, error })
