@@ -1,5 +1,6 @@
 import { ValidateCategory, ValidateCategoryId, ValidatePartialCategory } from '../schemas/categories.js'
 import { ValidateDish, ValidateDishId, ValidatePartialDish, ValidatePartialIdDish } from '../schemas/dishes.js'
+import { ValidateDishIdParam, ValidateDishIngredient, ValidateDishIngredientIds, ValidateDishIngredients, ValidateQuantityUsed } from '../schemas/dishIngredients.js'
 import { ValidateIngredient, ValidateIngredientId, ValidatePartialIdIngredient, ValidatePartialIngredient } from '../schemas/ingredients.js'
 import { ValidatePartialIdPurchase, ValidatePartialPurchase, ValidatePurchase, ValidatePurchaseId } from '../schemas/purchases.js'
 import { ValidatePartialIdSale, ValidatePartialSale, ValidateSale, ValidateSaleId } from '../schemas/sales.js'
@@ -112,5 +113,27 @@ export const SaleValidates = {
 
   PartialIdSale: (data) => {
     return ValidatePartialIdSale(data)
+  }
+}
+
+export const DishIngredientValidates = {
+  DishId: (data) => {
+    return ValidateDishIdParam(data)
+  },
+
+  DishIngredient: (data) => {
+    return ValidateDishIngredient(data)
+  },
+
+  DishIngredients: (data) => {
+    return ValidateDishIngredients(data)
+  },
+
+  DishIngredientIds: (data) => {
+    return ValidateDishIngredientIds(data)
+  },
+
+  QuantityUsed: (data) => {
+    return ValidateQuantityUsed(data)
   }
 }

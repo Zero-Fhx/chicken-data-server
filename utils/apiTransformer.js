@@ -305,3 +305,31 @@ export const transformIngredientCategory = (category) => {
 
   return transformed
 }
+
+export const transformDishIngredient = (dishIngredient) => {
+  if (!dishIngredient) return null
+
+  const transformed = {
+    id: dishIngredient.dish_ingredient_id,
+    type: 'dishIngredient',
+    attributes: {
+      dishId: dishIngredient.dish_id,
+      quantityUsed: dishIngredient.quantity_used,
+      ingredient: {
+        id: dishIngredient.ingredient_id,
+        name: dishIngredient.ingredient_name,
+        unit: dishIngredient.ingredient_unit,
+        ...(dishIngredient.ingredient_stock !== undefined && { stock: dishIngredient.ingredient_stock }),
+        ...(dishIngredient.ingredient_status && { status: dishIngredient.ingredient_status }),
+        ...(dishIngredient.ingredient_category_id && dishIngredient.ingredient_category_name && {
+          category: {
+            id: dishIngredient.ingredient_category_id,
+            name: dishIngredient.ingredient_category_name
+          }
+        })
+      }
+    }
+  }
+
+  return transformed
+}

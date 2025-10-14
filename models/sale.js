@@ -128,25 +128,22 @@ export const SaleModel = {
         throw new BadRequestError('Sale must have at least one detail item')
       }
 
-      const calculatedTotal = details.reduce((sum, detail) => {
-        const subtotal = (parseFloat(detail.quantity) * parseFloat(detail.unit_price)) - parseFloat(detail.discount || 0)
-        return sum + subtotal
-      }, 0)
-
+      // No calculamos el total manualmente, el trigger lo hará automáticamente
+      // El trigger también convierte customer vacío a 'Público general'
       const [saleResult] = await connection.query(
-        'INSERT INTO sales (sale_date, customer, notes, total) VALUES (?, ?, ?, ?)',
-        [saleDate, customer, notes, calculatedTotal.toFixed(2)]
+        'INSERT INTO sales (sale_date, customer, notes) VALUES (?, ?, ?)',
+        [saleDate, customer || '', notes]
       )
 
       const saleId = saleResult.insertId
 
+      // Los triggers calcularán el subtotal, actualizarán el total y reducirán el stock según las recetas
       for (const detail of details) {
         const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
-        const subtotal = (parseFloat(quantity) * parseFloat(unitPrice)) - parseFloat(discount)
 
         await connection.query(
-          'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount, subtotal) VALUES (?, ?, ?, ?, ?, ?)',
-          [saleId, dishId, quantity, unitPrice, discount, subtotal.toFixed(2)]
+          'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES (?, ?, ?, ?, ?)',
+          [saleId, dishId, quantity, unitPrice, discount]
         )
       }
 
@@ -182,25 +179,22 @@ export const SaleModel = {
           throw new BadRequestError('Sale must have at least one detail item')
         }
 
+        // Eliminamos los detalles antiguos (los triggers revertirán el stock y el total automáticamente)
         await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
 
-        const calculatedTotal = details.reduce((sum, detail) => {
-          const subtotal = (parseFloat(detail.quantity) * parseFloat(detail.unit_price)) - parseFloat(detail.discount || 0)
-          return sum + subtotal
-        }, 0)
-
+        // Actualizamos la venta (sin calcular el total manualmente)
         await connection.query(
-          'UPDATE sales SET sale_date = ?, customer = ?, notes = ?, total = ? WHERE sale_id = ?',
-          [saleDate, customer, notes, calculatedTotal.toFixed(2), id]
+          'UPDATE sales SET sale_date = ?, customer = ?, notes = ? WHERE sale_id = ?',
+          [saleDate, customer || '', notes, id]
         )
 
+        // Insertamos los nuevos detalles (los triggers calcularán subtotal, actualizarán total y stock)
         for (const detail of details) {
           const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
-          const subtotal = (parseFloat(quantity) * parseFloat(unitPrice)) - parseFloat(discount)
 
           await connection.query(
-            'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount, subtotal) VALUES (?, ?, ?, ?, ?, ?)',
-            [id, dishId, quantity, unitPrice, discount, subtotal.toFixed(2)]
+            'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES (?, ?, ?, ?, ?)',
+            [id, dishId, quantity, unitPrice, discount]
           )
         }
       } else {
@@ -213,7 +207,7 @@ export const SaleModel = {
         }
         if (customer !== undefined) {
           fields.push('customer = ?')
-          values.push(customer)
+          values.push(customer || '')
         }
         if (notes !== undefined) {
           fields.push('notes = ?')
@@ -260,6 +254,10 @@ export const SaleModel = {
         throw new BadRequestError('Sale is already cancelled')
       }
 
+      // Eliminamos los detalles (los triggers revertirán el stock automáticamente)
+      await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
+
+      // Marcamos la venta como eliminada (soft delete)
       await connection.query(
         'UPDATE sales SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE sale_id = ?',
         ['Cancelled', id]

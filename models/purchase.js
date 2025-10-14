@@ -166,29 +166,21 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase must have at least one detail item')
       }
 
-      const calculatedTotal = details.reduce((sum, detail) => {
-        return sum + (parseFloat(detail.quantity) * parseFloat(detail.unit_price))
-      }, 0)
-
+      // No calculamos el total manualmente, el trigger lo hará automáticamente
       const [purchaseResult] = await connection.query(
-        'INSERT INTO purchases (supplier_id, purchase_date, notes, total) VALUES (?, ?, ?, ?)',
-        [supplierId, purchaseDate, notes, calculatedTotal.toFixed(2)]
+        'INSERT INTO purchases (supplier_id, purchase_date, notes) VALUES (?, ?, ?)',
+        [supplierId, purchaseDate, notes]
       )
 
       const purchaseId = purchaseResult.insertId
 
+      // Los triggers calcularán el subtotal, actualizarán el total de la compra y el stock automáticamente
       for (const detail of details) {
         const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
-        const subtotal = (parseFloat(quantity) * parseFloat(unitPrice)).toFixed(2)
 
         await connection.query(
-          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)',
-          [purchaseId, ingredientId, quantity, unitPrice, subtotal]
-        )
-
-        await connection.query(
-          'UPDATE ingredients SET stock = stock + ? WHERE ingredient_id = ?',
-          [quantity, ingredientId]
+          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
+          [purchaseId, ingredientId, quantity, unitPrice]
         )
       }
 
@@ -219,36 +211,22 @@ export const PurchaseModel = {
 
       const { supplier_id: supplierId, purchase_date: purchaseDate, notes, details } = purchaseData
 
-      for (const detail of originalPurchase.details) {
-        await connection.query(
-          'UPDATE ingredients SET stock = stock - ? WHERE ingredient_id = ?',
-          [detail.quantity, detail.ingredient_id]
-        )
-      }
-
+      // Eliminamos los detalles antiguos (los triggers revertirán el stock y el total automáticamente)
       await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
 
-      const calculatedTotal = details.reduce((sum, detail) => {
-        return sum + (parseFloat(detail.quantity) * parseFloat(detail.unit_price))
-      }, 0)
-
+      // Actualizamos la compra (sin calcular el total manualmente)
       await connection.query(
-        'UPDATE purchases SET supplier_id = ?, purchase_date = ?, notes = ?, total = ? WHERE purchase_id = ?',
-        [supplierId, purchaseDate, notes, calculatedTotal.toFixed(2), id]
+        'UPDATE purchases SET supplier_id = ?, purchase_date = ?, notes = ? WHERE purchase_id = ?',
+        [supplierId, purchaseDate, notes, id]
       )
 
+      // Insertamos los nuevos detalles (los triggers calcularán subtotal, actualizarán total y stock)
       for (const detail of details) {
         const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
-        const subtotal = (parseFloat(quantity) * parseFloat(unitPrice)).toFixed(2)
 
         await connection.query(
-          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)',
-          [id, ingredientId, quantity, unitPrice, subtotal]
-        )
-
-        await connection.query(
-          'UPDATE ingredients SET stock = stock + ? WHERE ingredient_id = ?',
-          [quantity, ingredientId]
+          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
+          [id, ingredientId, quantity, unitPrice]
         )
       }
 
@@ -281,13 +259,10 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase is already cancelled')
       }
 
-      for (const detail of purchaseToDelete.details) {
-        await connection.query(
-          'UPDATE ingredients SET stock = stock - ? WHERE ingredient_id = ?',
-          [detail.quantity, detail.ingredient_id]
-        )
-      }
+      // Eliminamos los detalles (los triggers revertirán el stock automáticamente)
+      await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
 
+      // Marcamos la compra como eliminada (soft delete)
       await connection.query(
         'UPDATE purchases SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = ?',
         ['Cancelled', id]
