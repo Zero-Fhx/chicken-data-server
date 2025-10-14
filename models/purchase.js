@@ -2,11 +2,42 @@ import pool from '../config/database.js'
 import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
 
 export const PurchaseModel = {
-  async getAll ({ page = 1, limit = 10, status } = {}) {
+  async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
-      
-      let query = `
+
+      const conditions = ['p.deleted_at IS NULL']
+      const params = []
+
+      if (filters.search) {
+        conditions.push('(p.notes LIKE ? OR s.name LIKE ?)')
+        const searchTerm = `%${filters.search}%`
+        params.push(searchTerm, searchTerm)
+      }
+
+      if (filters.status) {
+        conditions.push('p.status = ?')
+        params.push(filters.status)
+      }
+
+      if (filters.supplierId) {
+        conditions.push('p.supplier_id = ?')
+        params.push(filters.supplierId)
+      }
+
+      if (filters.startDate) {
+        conditions.push('p.purchase_date >= ?')
+        params.push(filters.startDate)
+      }
+
+      if (filters.endDate) {
+        conditions.push('p.purchase_date <= ?')
+        params.push(filters.endDate)
+      }
+
+      const whereClause = `WHERE ${conditions.join(' AND ')}`
+
+      const query = `
         SELECT 
           p.*,
           s.supplier_id,
@@ -21,16 +52,10 @@ export const PurchaseModel = {
           s.updated_at as supplier_updated_at
         FROM purchases p 
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
-        WHERE p.deleted_at IS NULL
+        ${whereClause}
+        ORDER BY p.purchase_date DESC, p.purchase_id DESC 
+        LIMIT ? OFFSET ?
       `
-      const params = []
-
-      if (status) {
-        query += ' AND p.status = ?'
-        params.push(status)
-      }
-
-      query += ' ORDER BY p.purchase_date DESC, p.purchase_id DESC LIMIT ? OFFSET ?'
       params.push(parseInt(limit), offset)
 
       const [purchaseRows] = await pool.query(query, params)
@@ -58,15 +83,14 @@ export const PurchaseModel = {
         purchase.details = detailRows
       }
 
-      let countQuery = 'SELECT COUNT(*) AS total FROM purchases WHERE deleted_at IS NULL'
-      const countParams = []
-      
-      if (status) {
-        countQuery += ' AND status = ?'
-        countParams.push(status)
-      }
+      const countQuery = `
+        SELECT COUNT(*) AS total 
+        FROM purchases p 
+        LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
+        ${whereClause}
+      `
 
-      const [[{ total }]] = await pool.query(countQuery, countParams)
+      const [[{ total }]] = await pool.query(countQuery, params.slice(0, -2))
       return { data: purchaseRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)

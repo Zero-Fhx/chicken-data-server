@@ -5,7 +5,7 @@ export const DishModel = {
   async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
-      
+
       const conditions = ['d.deleted_at IS NULL']
       const params = []
 

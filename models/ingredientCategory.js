@@ -5,7 +5,7 @@ export const IngredientCategoryModel = {
   async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
-      
+
       const conditions = ['deleted_at IS NULL']
       const params = []
 
@@ -60,12 +60,12 @@ export const IngredientCategoryModel = {
   async create (categoryData) {
     try {
       const { name, description, status = 'Active' } = categoryData
-      
+
       const [existing] = await pool.query(
         'SELECT * FROM Ingredient_Categories WHERE name = ? AND deleted_at IS NULL',
         [name]
       )
-      
+
       if (existing.length > 0) {
         throw new BadRequestError('A category with this name already exists')
       }
@@ -104,11 +104,11 @@ export const IngredientCategoryModel = {
           'SELECT * FROM Ingredient_Categories WHERE name = ? AND category_id != ? AND deleted_at IS NULL',
           [name, id]
         )
-        
+
         if (existing.length > 0) {
           throw new BadRequestError('A category with this name already exists')
         }
-        
+
         fields.push('name = ?')
         values.push(name)
       }

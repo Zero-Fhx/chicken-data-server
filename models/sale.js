@@ -2,22 +2,42 @@ import pool from '../config/database.js'
 import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
 
 export const SaleModel = {
-  async getAll ({ page = 1, limit = 10, status } = {}) {
+  async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
-      
-      let query = `
-        SELECT * FROM sales 
-        WHERE deleted_at IS NULL
-      `
+
+      const conditions = ['deleted_at IS NULL']
       const params = []
 
-      if (status) {
-        query += ' AND status = ?'
-        params.push(status)
+      if (filters.search) {
+        conditions.push('(notes LIKE ? OR customer LIKE ?)')
+        const searchTerm = `%${filters.search}%`
+        params.push(searchTerm, searchTerm)
       }
 
-      query += ' ORDER BY sale_date DESC, sale_id DESC LIMIT ? OFFSET ?'
+      if (filters.status) {
+        conditions.push('status = ?')
+        params.push(filters.status)
+      }
+
+      if (filters.startDate) {
+        conditions.push('sale_date >= ?')
+        params.push(filters.startDate)
+      }
+
+      if (filters.endDate) {
+        conditions.push('sale_date <= ?')
+        params.push(filters.endDate)
+      }
+
+      const whereClause = `WHERE ${conditions.join(' AND ')}`
+
+      const query = `
+        SELECT * FROM sales 
+        ${whereClause}
+        ORDER BY sale_date DESC, sale_id DESC 
+        LIMIT ? OFFSET ?
+      `
       params.push(parseInt(limit), offset)
 
       const [saleRows] = await pool.query(query, params)
@@ -44,15 +64,9 @@ export const SaleModel = {
         sale.details = detailRows
       }
 
-      let countQuery = 'SELECT COUNT(*) AS total FROM sales WHERE deleted_at IS NULL'
-      const countParams = []
-      
-      if (status) {
-        countQuery += ' AND status = ?'
-        countParams.push(status)
-      }
+      const countQuery = `SELECT COUNT(*) AS total FROM sales ${whereClause}`
 
-      const [[{ total }]] = await pool.query(countQuery, countParams)
+      const [[{ total }]] = await pool.query(countQuery, params.slice(0, -2))
       return { data: saleRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)
