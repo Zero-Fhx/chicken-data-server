@@ -4,10 +4,6 @@ import { handleError, handleResponse, handleValidationError } from '../utils/res
 import { DishIngredientValidates } from '../utils/validates.js'
 
 export const DishIngredientsController = {
-  /**
-   * Obtiene la receta completa de un plato (todos sus ingredientes)
-   * GET /api/dishes/:dishId/ingredients
-   */
   async getRecipe (req, res) {
     const validation = DishIngredientValidates.DishId(req.params)
 
@@ -33,10 +29,6 @@ export const DishIngredientsController = {
     }
   },
 
-  /**
-   * Agrega un ingrediente a la receta de un plato
-   * POST /api/dishes/:dishId/ingredients
-   */
   async addIngredient (req, res) {
     const idValidation = DishIngredientValidates.DishId(req.params)
 
@@ -67,10 +59,6 @@ export const DishIngredientsController = {
     }
   },
 
-  /**
-   * Actualiza la cantidad de un ingrediente en la receta
-   * PUT /api/dishes/:dishId/ingredients/:ingredientId
-   */
   async updateQuantity (req, res) {
     const validation = DishIngredientValidates.DishIngredientIds(req.params)
 
@@ -102,10 +90,6 @@ export const DishIngredientsController = {
     }
   },
 
-  /**
-   * Elimina un ingrediente de la receta
-   * DELETE /api/dishes/:dishId/ingredients/:ingredientId
-   */
   async removeIngredient (req, res) {
     const validation = DishIngredientValidates.DishIngredientIds(req.params)
 
@@ -129,10 +113,6 @@ export const DishIngredientsController = {
     }
   },
 
-  /**
-   * Reemplaza toda la receta de un plato
-   * PUT /api/dishes/:dishId/ingredients
-   */
   async replaceRecipe (req, res) {
     const idValidation = DishIngredientValidates.DishId(req.params)
 

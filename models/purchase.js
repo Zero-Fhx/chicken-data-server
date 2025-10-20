@@ -166,7 +166,6 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase must have at least one detail item')
       }
 
-      // No calculamos el total manualmente, el trigger lo hará automáticamente
       const [purchaseResult] = await connection.query(
         'INSERT INTO purchases (supplier_id, purchase_date, notes) VALUES (?, ?, ?)',
         [supplierId, purchaseDate, notes]
@@ -174,7 +173,6 @@ export const PurchaseModel = {
 
       const purchaseId = purchaseResult.insertId
 
-      // Los triggers calcularán el subtotal, actualizarán el total de la compra y el stock automáticamente
       for (const detail of details) {
         const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
 
@@ -211,16 +209,13 @@ export const PurchaseModel = {
 
       const { supplier_id: supplierId, purchase_date: purchaseDate, notes, details } = purchaseData
 
-      // Eliminamos los detalles antiguos (los triggers revertirán el stock y el total automáticamente)
       await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
 
-      // Actualizamos la compra (sin calcular el total manualmente)
       await connection.query(
         'UPDATE purchases SET supplier_id = ?, purchase_date = ?, notes = ? WHERE purchase_id = ?',
         [supplierId, purchaseDate, notes, id]
       )
 
-      // Insertamos los nuevos detalles (los triggers calcularán subtotal, actualizarán total y stock)
       for (const detail of details) {
         const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
 
@@ -259,10 +254,8 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase is already cancelled')
       }
 
-      // Eliminamos los detalles (los triggers revertirán el stock automáticamente)
       await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
 
-      // Marcamos la compra como eliminada (soft delete)
       await connection.query(
         'UPDATE purchases SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = ?',
         ['Cancelled', id]

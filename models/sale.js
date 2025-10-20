@@ -128,8 +128,6 @@ export const SaleModel = {
         throw new BadRequestError('Sale must have at least one detail item')
       }
 
-      // No calculamos el total manualmente, el trigger lo hará automáticamente
-      // El trigger también convierte customer vacío a 'Público general'
       const [saleResult] = await connection.query(
         'INSERT INTO sales (sale_date, customer, notes) VALUES (?, ?, ?)',
         [saleDate, customer || '', notes]
@@ -137,7 +135,6 @@ export const SaleModel = {
 
       const saleId = saleResult.insertId
 
-      // Los triggers calcularán el subtotal, actualizarán el total y reducirán el stock según las recetas
       for (const detail of details) {
         const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
 
@@ -179,16 +176,13 @@ export const SaleModel = {
           throw new BadRequestError('Sale must have at least one detail item')
         }
 
-        // Eliminamos los detalles antiguos (los triggers revertirán el stock y el total automáticamente)
         await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
 
-        // Actualizamos la venta (sin calcular el total manualmente)
         await connection.query(
           'UPDATE sales SET sale_date = ?, customer = ?, notes = ? WHERE sale_id = ?',
           [saleDate, customer || '', notes, id]
         )
 
-        // Insertamos los nuevos detalles (los triggers calcularán subtotal, actualizarán total y stock)
         for (const detail of details) {
           const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
 
@@ -254,10 +248,8 @@ export const SaleModel = {
         throw new BadRequestError('Sale is already cancelled')
       }
 
-      // Eliminamos los detalles (los triggers revertirán el stock automáticamente)
       await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
 
-      // Marcamos la venta como eliminada (soft delete)
       await connection.query(
         'UPDATE sales SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE sale_id = ?',
         ['Cancelled', id]

@@ -1,30 +1,31 @@
+const toNumber = (v) => v === undefined || v === null
+  ? v
+  : (typeof v === 'number' ? v : Number(v))
+
 export const transformDish = (dish) => {
   if (!dish) return null
 
   const transformed = {
     id: dish.dish_id,
-    type: 'dish',
-    attributes: {
-      name: dish.name || dish.dish_name,
-      ...((dish.description || dish.dish_description) && { description: dish.description || dish.dish_description }),
-      ...((dish.category_id || dish.dish_category_id) && (dish.category_name || dish.dish_category_name) && {
-        category: {
-          id: dish.category_id || dish.dish_category_id,
-          name: dish.category_name || dish.dish_category_name
-        }
-      }),
-      ...((dish.price || dish.dish_price) && { price: dish.price || dish.dish_price }),
-      ...((dish.status || dish.dish_status) && { status: dish.status || dish.dish_status })
-    }
+    name: dish.name || dish.dish_name
   }
 
-  const createdAt = dish.created_at || dish.dish_created_at
-  const updatedAt = dish.updated_at || dish.dish_updated_at
+  if (dish.description || dish.dish_description) {
+    transformed.description = dish.description || dish.dish_description
+  }
 
-  if (createdAt || updatedAt) {
-    transformed.meta = {
-      ...(createdAt && { createdAt }),
-      ...(updatedAt && { updatedAt })
+  if (dish.price || dish.dish_price) {
+    transformed.price = toNumber(dish.price || dish.dish_price)
+  }
+
+  if (dish.status || dish.dish_status) {
+    transformed.status = dish.status || dish.dish_status
+  }
+
+  if ((dish.category_id || dish.dish_category_id) && (dish.category_name || dish.dish_category_name)) {
+    transformed.category = {
+      id: dish.category_id || dish.dish_category_id,
+      name: dish.category_name || dish.dish_category_name
     }
   }
 
@@ -44,27 +45,15 @@ export const transformSupplier = (supplier) => {
 
   const transformed = {
     id: supplier.supplier_id,
-    type: 'supplier',
-    attributes: {
-      name,
-      ...(ruc && { ruc }),
-      ...(phone && { phone }),
-      ...(email && { email }),
-      ...(address && { address }),
-      ...(contactPerson && { contactPerson }),
-      ...(status && { status })
-    }
+    name
   }
 
-  const createdAt = supplier.created_at || supplier.supplier_created_at
-  const updatedAt = supplier.updated_at || supplier.supplier_updated_at
-
-  if (createdAt || updatedAt) {
-    transformed.meta = {
-      ...(createdAt && { createdAt }),
-      ...(updatedAt && { updatedAt })
-    }
-  }
+  if (ruc) transformed.ruc = ruc
+  if (phone) transformed.phone = phone
+  if (email) transformed.email = email
+  if (address) transformed.address = address
+  if (contactPerson) transformed.contactPerson = contactPerson
+  if (status) transformed.status = status
 
   return transformed
 }
@@ -80,29 +69,18 @@ export const transformIngredient = (ingredient) => {
 
   const transformed = {
     id: ingredient.ingredient_id,
-    type: 'ingredient',
-    attributes: {
-      name,
-      ...(unit && { unit }),
-      ...((ingredient.category_id || ingredient.ingredient_category_id) && (ingredient.category_name || ingredient.ingredient_category_name) && {
-        category: {
-          id: ingredient.category_id || ingredient.ingredient_category_id,
-          name: ingredient.category_name || ingredient.ingredient_category_name
-        }
-      }),
-      ...(status && { status }),
-      ...(stock !== undefined && stock !== null && { stock }),
-      ...(minimumStock !== undefined && minimumStock !== null && { minimumStock })
-    }
+    name
   }
 
-  const createdAt = ingredient.created_at || ingredient.ingredient_created_at
-  const updatedAt = ingredient.updated_at || ingredient.ingredient_updated_at
+  if (unit) transformed.unit = unit
+  if (status) transformed.status = status
+  if (stock !== undefined && stock !== null) transformed.stock = stock
+  if (minimumStock !== undefined && minimumStock !== null) transformed.minimumStock = minimumStock
 
-  if (createdAt || updatedAt) {
-    transformed.meta = {
-      ...(createdAt && { createdAt }),
-      ...(updatedAt && { updatedAt })
+  if ((ingredient.category_id || ingredient.ingredient_category_id) && (ingredient.category_name || ingredient.ingredient_category_name)) {
+    transformed.category = {
+      id: ingredient.category_id || ingredient.ingredient_category_id,
+      name: ingredient.category_name || ingredient.ingredient_category_name
     }
   }
 
@@ -114,12 +92,9 @@ export const transformPurchaseDetail = (detail) => {
 
   const transformed = {
     id: detail.purchase_detail_id,
-    type: 'purchaseDetail',
-    attributes: {
-      quantity: detail.quantity,
-      unitPrice: detail.unit_price,
-      subtotal: detail.subtotal
-    }
+    quantity: detail.quantity,
+    unitPrice: toNumber(detail.unit_price),
+    subtotal: toNumber(detail.subtotal)
   }
 
   if (detail.ingredient_id) {
@@ -131,18 +106,9 @@ export const transformPurchaseDetail = (detail) => {
       stock: detail.ingredient_stock,
       minimum_stock: detail.ingredient_minimum_stock,
       ingredient_category_id: detail.ingredient_category_id,
-      ingredient_category_name: detail.ingredient_category_name,
-      ingredient_created_at: detail.ingredient_created_at,
-      ingredient_updated_at: detail.ingredient_updated_at
+      ingredient_category_name: detail.ingredient_category_name
     }
-    transformed.attributes.ingredient = transformIngredient(ingredient)
-  }
-
-  if (detail.created_at || detail.updated_at) {
-    transformed.meta = {
-      ...(detail.created_at && { createdAt: detail.created_at }),
-      ...(detail.updated_at && { updatedAt: detail.updated_at })
-    }
+    transformed.ingredient = transformIngredient(ingredient)
   }
 
   return transformed
@@ -153,13 +119,13 @@ export const transformPurchase = (purchase) => {
 
   const transformed = {
     id: purchase.purchase_id,
-    type: 'purchase',
-    attributes: {
-      purchaseDate: purchase.purchase_date,
-      ...(purchase.notes && { notes: purchase.notes }),
-      total: purchase.total,
-      status: purchase.status
-    }
+    purchaseDate: purchase.purchase_date,
+    total: toNumber(purchase.total),
+    status: purchase.status
+  }
+
+  if (purchase.notes) {
+    transformed.notes = purchase.notes
   }
 
   if (purchase.supplier_id) {
@@ -171,22 +137,13 @@ export const transformPurchase = (purchase) => {
       email: purchase.supplier_email,
       address: purchase.supplier_address,
       contact_person: purchase.supplier_contact_person,
-      supplier_status: purchase.supplier_status,
-      supplier_created_at: purchase.supplier_created_at,
-      supplier_updated_at: purchase.supplier_updated_at
+      supplier_status: purchase.supplier_status
     }
-    transformed.attributes.supplier = transformSupplier(supplier)
+    transformed.supplier = transformSupplier(supplier)
   }
 
   if (purchase.details && Array.isArray(purchase.details) && purchase.details.length > 0) {
-    transformed.attributes.details = purchase.details.map(detail => transformPurchaseDetail(detail))
-  }
-
-  if (purchase.created_at || purchase.updated_at) {
-    transformed.meta = {
-      ...(purchase.created_at && { createdAt: purchase.created_at }),
-      ...(purchase.updated_at && { updatedAt: purchase.updated_at })
-    }
+    transformed.details = purchase.details.map(detail => transformPurchaseDetail(detail))
   }
 
   return transformed
@@ -197,13 +154,10 @@ export const transformSaleDetail = (detail) => {
 
   const transformed = {
     id: detail.sale_detail_id,
-    type: 'saleDetail',
-    attributes: {
-      quantity: detail.quantity,
-      unitPrice: detail.unit_price,
-      discount: detail.discount,
-      subtotal: detail.subtotal
-    }
+    quantity: detail.quantity,
+    unitPrice: toNumber(detail.unit_price),
+    discount: toNumber(detail.discount),
+    subtotal: toNumber(detail.subtotal)
   }
 
   if (detail.dish_id) {
@@ -214,18 +168,9 @@ export const transformSaleDetail = (detail) => {
       price: detail.dish_price,
       status: detail.dish_status,
       dish_category_id: detail.dish_category_id,
-      dish_category_name: detail.dish_category_name,
-      dish_created_at: detail.dish_created_at,
-      dish_updated_at: detail.dish_updated_at
+      dish_category_name: detail.dish_category_name
     }
-    transformed.attributes.dish = transformDish(dish)
-  }
-
-  if (detail.created_at || detail.updated_at) {
-    transformed.meta = {
-      ...(detail.created_at && { createdAt: detail.created_at }),
-      ...(detail.updated_at && { updatedAt: detail.updated_at })
-    }
+    transformed.dish = transformDish(dish)
   }
 
   return transformed
@@ -236,25 +181,21 @@ export const transformSale = (sale) => {
 
   const transformed = {
     id: sale.sale_id,
-    type: 'sale',
-    attributes: {
-      saleDate: sale.sale_date,
-      ...(sale.customer && { customer: sale.customer }),
-      ...(sale.notes && { notes: sale.notes }),
-      total: sale.total,
-      status: sale.status
-    }
+    saleDate: sale.sale_date,
+    total: toNumber(sale.total),
+    status: sale.status
+  }
+
+  if (sale.customer) {
+    transformed.customer = sale.customer
+  }
+
+  if (sale.notes) {
+    transformed.notes = sale.notes
   }
 
   if (sale.details && Array.isArray(sale.details) && sale.details.length > 0) {
-    transformed.attributes.details = sale.details.map(detail => transformSaleDetail(detail))
-  }
-
-  if (sale.created_at || sale.updated_at) {
-    transformed.meta = {
-      ...(sale.created_at && { createdAt: sale.created_at }),
-      ...(sale.updated_at && { updatedAt: sale.updated_at })
-    }
+    transformed.details = sale.details.map(detail => transformSaleDetail(detail))
   }
 
   return transformed
@@ -265,19 +206,15 @@ export const transformDishCategory = (category) => {
 
   const transformed = {
     id: category.category_id,
-    type: 'dishCategory',
-    attributes: {
-      name: category.name,
-      ...(category.description && { description: category.description }),
-      ...(category.status && { status: category.status })
-    }
+    name: category.name
   }
 
-  if (category.created_at || category.updated_at) {
-    transformed.meta = {
-      ...(category.created_at && { createdAt: category.created_at }),
-      ...(category.updated_at && { updatedAt: category.updated_at })
-    }
+  if (category.description) {
+    transformed.description = category.description
+  }
+
+  if (category.status) {
+    transformed.status = category.status
   }
 
   return transformed
@@ -288,19 +225,15 @@ export const transformIngredientCategory = (category) => {
 
   const transformed = {
     id: category.category_id,
-    type: 'ingredientCategory',
-    attributes: {
-      name: category.name,
-      ...(category.description && { description: category.description }),
-      ...(category.status && { status: category.status })
-    }
+    name: category.name
   }
 
-  if (category.created_at || category.updated_at) {
-    transformed.meta = {
-      ...(category.created_at && { createdAt: category.created_at }),
-      ...(category.updated_at && { updatedAt: category.updated_at })
-    }
+  if (category.description) {
+    transformed.description = category.description
+  }
+
+  if (category.status) {
+    transformed.status = category.status
   }
 
   return transformed
@@ -311,23 +244,28 @@ export const transformDishIngredient = (dishIngredient) => {
 
   const transformed = {
     id: dishIngredient.dish_ingredient_id,
-    type: 'dishIngredient',
-    attributes: {
-      dishId: dishIngredient.dish_id,
-      quantityUsed: dishIngredient.quantity_used,
-      ingredient: {
-        id: dishIngredient.ingredient_id,
-        name: dishIngredient.ingredient_name,
-        unit: dishIngredient.ingredient_unit,
-        ...(dishIngredient.ingredient_stock !== undefined && { stock: dishIngredient.ingredient_stock }),
-        ...(dishIngredient.ingredient_status && { status: dishIngredient.ingredient_status }),
-        ...(dishIngredient.ingredient_category_id && dishIngredient.ingredient_category_name && {
-          category: {
-            id: dishIngredient.ingredient_category_id,
-            name: dishIngredient.ingredient_category_name
-          }
-        })
-      }
+    dishId: dishIngredient.dish_id,
+    quantityUsed: dishIngredient.quantity_used
+  }
+
+  transformed.ingredient = {
+    id: dishIngredient.ingredient_id,
+    name: dishIngredient.ingredient_name,
+    unit: dishIngredient.ingredient_unit
+  }
+
+  if (dishIngredient.ingredient_stock !== undefined) {
+    transformed.ingredient.stock = dishIngredient.ingredient_stock
+  }
+
+  if (dishIngredient.ingredient_status) {
+    transformed.ingredient.status = dishIngredient.ingredient_status
+  }
+
+  if (dishIngredient.ingredient_category_id && dishIngredient.ingredient_category_name) {
+    transformed.ingredient.category = {
+      id: dishIngredient.ingredient_category_id,
+      name: dishIngredient.ingredient_category_name
     }
   }
 

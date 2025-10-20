@@ -1,6 +1,5 @@
 import z from 'zod'
 
-// Schema para agregar un ingrediente a un plato
 const dishIngredientSchema = z.object({
   ingredient_id: z
     .number({ error: 'Ingredient ID is required' })
@@ -11,14 +10,12 @@ const dishIngredientSchema = z.object({
     .positive({ error: 'Quantity used must be a positive number' })
 })
 
-// Schema para actualizar cantidad de un ingrediente
 const quantityUsedSchema = z.object({
   quantity_used: z
     .number({ error: 'Quantity used is required' })
     .positive({ error: 'Quantity used must be a positive number' })
 })
 
-// Schema para reemplazar todos los ingredientes de un plato
 const dishIngredientsSchema = z.object({
   ingredients: z
     .array(dishIngredientSchema)
@@ -26,7 +23,6 @@ const dishIngredientsSchema = z.object({
     .default([])
 })
 
-// Schema para validar dishId en params
 const dishIdSchema = z.object({
   dishId: z
     .string()
@@ -38,7 +34,6 @@ const dishIdSchema = z.object({
     )
 })
 
-// Schema para validar dishId e ingredientId en params
 const dishIngredientIdsSchema = z.object({
   dishId: z
     .string()
