@@ -1,10 +1,14 @@
 export const handleResponse = ({ res, status = 200, data = null, message = null, pagination = null, filters = null }) => {
+  const hasFilters = filters !== null && Object.keys(filters).length > 0
+  const meta = {}
+  if (pagination !== null) meta.pagination = pagination
+  if (hasFilters) meta.filters = filters
+
   const response = {
     success: status >= 200 && status < 300,
     ...(message !== null && { message }),
     ...(data !== null && { data }),
-    ...(pagination !== null && { meta: { pagination } }),
-    ...(filters !== null && Object.keys(filters).length > 0 && { filters }),
+    ...(Object.keys(meta).length > 0 && { meta }),
     timestamp: new Date().toISOString()
   }
 
