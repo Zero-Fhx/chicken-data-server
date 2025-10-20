@@ -1,8 +1,8 @@
 export const handleResponse = ({ res, status = 200, data = null, message = null, pagination = null, filters = null }) => {
   const response = {
     success: status >= 200 && status < 300,
-    ...(data !== null && { data }),
     ...(message !== null && { message }),
+    ...(data !== null && { data }),
     ...(pagination !== null && { meta: { pagination } }),
     ...(filters !== null && Object.keys(filters).length > 0 && { filters }),
     timestamp: new Date().toISOString()
