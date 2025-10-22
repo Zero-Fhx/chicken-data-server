@@ -10,7 +10,7 @@ export const PurchaseModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(p.notes LIKE $${params.length + 1} OR s.name LIKE $${params.length + 2})`)
+        conditions.push(`(p.notes ILIKE $${params.length + 1} OR s.name ILIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }

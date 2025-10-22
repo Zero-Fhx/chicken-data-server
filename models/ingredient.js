@@ -10,7 +10,7 @@ export const IngredientModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(i.name LIKE $${params.length + 1})`)
+        conditions.push(`(i.name ILIKE $${params.length + 1})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm)
       }

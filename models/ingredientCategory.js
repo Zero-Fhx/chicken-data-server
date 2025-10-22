@@ -10,7 +10,7 @@ export const IngredientCategoryModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(name LIKE $${params.length + 1} OR description LIKE $${params.length + 2})`)
+        conditions.push(`(name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }

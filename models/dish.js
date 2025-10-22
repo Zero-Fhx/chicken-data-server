@@ -10,7 +10,7 @@ export const DishModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(d.name LIKE $${params.length + 1} OR d.description LIKE $${params.length + 2})`)
+        conditions.push(`(d.name ILIKE $${params.length + 1} OR d.description ILIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }

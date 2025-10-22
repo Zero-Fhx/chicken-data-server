@@ -10,7 +10,7 @@ export const SupplierModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(s.name LIKE $${params.length + 1} OR s.ruc LIKE $${params.length + 2} OR s.email LIKE $${params.length + 3})`)
+        conditions.push(`(s.name ILIKE $${params.length + 1} OR s.ruc ILIKE $${params.length + 2} OR s.email ILIKE $${params.length + 3})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm, searchTerm)
       }
