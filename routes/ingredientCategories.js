@@ -1,12 +1,10 @@
 import { Router } from 'express'
 import { IngredientCategoriesController } from '../controllers/ingredientCategories.js'
 
-const router = Router()
+export const IngredientCategoriesRouter = Router()
 
-router.get('/', IngredientCategoriesController.getAll)
-router.get('/:id', IngredientCategoriesController.getById)
-router.post('/', IngredientCategoriesController.create)
-router.patch('/:id', IngredientCategoriesController.update)
-router.delete('/:id', IngredientCategoriesController.delete)
-
-export default router
+IngredientCategoriesRouter.get('/', IngredientCategoriesController.getAll)
+IngredientCategoriesRouter.get('/:id', IngredientCategoriesController.getById)
+IngredientCategoriesRouter.post('/', IngredientCategoriesController.create)
+IngredientCategoriesRouter.patch('/:id', IngredientCategoriesController.update)
+IngredientCategoriesRouter.delete('/:id', IngredientCategoriesController.delete)

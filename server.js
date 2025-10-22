@@ -4,10 +4,10 @@ import express from 'express'
 import logger from 'morgan'
 import { testConnection } from './config/database.js'
 
-import DishCategoriesRouter from './routes/dishCategories.js'
+import { DishCategoriesRouter } from './routes/dishCategories.js'
 import { DishesRouter } from './routes/dishes.js'
-import { dishIngredientsRouter } from './routes/dishIngredients.js'
-import IngredientCategoriesRouter from './routes/ingredientCategories.js'
+import { DishIngredientsRouter } from './routes/dishIngredients.js'
+import { IngredientCategoriesRouter } from './routes/ingredientCategories.js'
 import { IngredientsRouter } from './routes/ingredients.js'
 import { PurchasesRouter } from './routes/purchases.js'
 import { SalesRouter } from './routes/sales.js'
@@ -22,6 +22,10 @@ app.use(cors())
 app.use(logger('dev'))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end()
+})
 
 const ENDPOINTS = {
   Health: '/health',
@@ -83,7 +87,7 @@ app.get('/endpoints', (req, res) => {
 })
 
 app.use('/api/dishes', DishesRouter)
-app.use('/api/dishes', dishIngredientsRouter)
+app.use('/api/dishes', DishIngredientsRouter)
 app.use('/api/dish-categories', DishCategoriesRouter)
 app.use('/api/suppliers', SuppliersRouter)
 app.use('/api/ingredients', IngredientsRouter)

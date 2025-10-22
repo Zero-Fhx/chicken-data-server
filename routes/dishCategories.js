@@ -1,12 +1,10 @@
 import { Router } from 'express'
 import { DishCategoriesController } from '../controllers/dishCategories.js'
 
-const router = Router()
+export const DishCategoriesRouter = Router()
 
-router.get('/', DishCategoriesController.getAll)
-router.get('/:id', DishCategoriesController.getById)
-router.post('/', DishCategoriesController.create)
-router.patch('/:id', DishCategoriesController.update)
-router.delete('/:id', DishCategoriesController.delete)
-
-export default router
+DishCategoriesRouter.get('/', DishCategoriesController.getAll)
+DishCategoriesRouter.get('/:id', DishCategoriesController.getById)
+DishCategoriesRouter.post('/', DishCategoriesController.create)
+DishCategoriesRouter.patch('/:id', DishCategoriesController.update)
+DishCategoriesRouter.delete('/:id', DishCategoriesController.delete)
