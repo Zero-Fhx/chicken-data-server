@@ -10,28 +10,28 @@ export const DishModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push('(d.name LIKE ? OR d.description LIKE ?)')
+        conditions.push(`(d.name LIKE $${params.length + 1} OR d.description LIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }
 
       if (filters.categoryId) {
-        conditions.push('d.category_id = ?')
+        conditions.push(`d.category_id = $${params.length + 1}`)
         params.push(filters.categoryId)
       }
 
       if (filters.minPrice !== undefined) {
-        conditions.push('d.price >= ?')
+        conditions.push(`d.price >= $${params.length + 1}`)
         params.push(filters.minPrice)
       }
 
       if (filters.maxPrice !== undefined) {
-        conditions.push('d.price <= ?')
+        conditions.push(`d.price <= $${params.length + 1}`)
         params.push(filters.maxPrice)
       }
 
       if (filters.status) {
-        conditions.push('d.status = ?')
+        conditions.push(`d.status = $${params.length + 1}`)
         params.push(filters.status)
       }
 
@@ -39,21 +39,21 @@ export const DishModel = {
 
       const countQuery = `
         SELECT COUNT(*) AS total 
-        FROM Dishes d 
-        LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
+        FROM dishes d 
+        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
         ${whereClause}
       `
-      const [[{ total }]] = await pool.query(countQuery, params)
+      const { rows: [{ total }] } = await pool.query(countQuery, params)
 
       const dataQuery = `
         SELECT d.*, dc.name as category_name 
-        FROM Dishes d 
-        LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
+        FROM dishes d 
+        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
         ${whereClause} 
         ORDER BY d.dish_id DESC 
-        LIMIT ? OFFSET ?
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
-      const [dishRows] = await pool.query(dataQuery, [...params, parseInt(limit), offset])
+      const { rows: dishRows } = await pool.query(dataQuery, [...params, parseInt(limit), offset])
 
       return { data: dishRows, total }
     } catch (error) {
@@ -63,11 +63,11 @@ export const DishModel = {
 
   async getById (id) {
     try {
-      const [dishRows] = await pool.query(
+      const { rows: dishRows } = await pool.query(
         `SELECT d.*, dc.name as category_name 
-         FROM Dishes d 
-         LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
-         WHERE d.dish_id = ? AND d.deleted_at IS NULL`,
+         FROM dishes d 
+         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+         WHERE d.dish_id = $1 AND d.deleted_at IS NULL`,
         [id]
       )
       if (dishRows.length === 0) {
@@ -85,17 +85,17 @@ export const DishModel = {
   async create (dishData) {
     try {
       const { name, description, categoryId = 1, price, status = 'Active' } = dishData
-      const [result] = await pool.query(
-        'INSERT INTO Dishes (name, description, category_id, price, status) VALUES (?, ?, ?, ?, ?)',
+      const { rows: [dish] } = await pool.query(
+        'INSERT INTO dishes (name, description, category_id, price, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
         [name, description, categoryId, price, status]
       )
 
-      const [dishRows] = await pool.query(
+      const { rows: dishRows } = await pool.query(
         `SELECT d.*, dc.name as category_name 
-         FROM Dishes d 
-         LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
-         WHERE d.dish_id = ?`,
-        [result.insertId]
+         FROM dishes d 
+         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+         WHERE d.dish_id = $1`,
+        [dish.dish_id]
       )
       return dishRows[0]
     } catch (error) {
@@ -110,24 +110,25 @@ export const DishModel = {
       const fields = []
       const values = []
 
+      let paramIndex = 1
       if (name !== undefined) {
-        fields.push('name = ?')
+        fields.push(`name = $${paramIndex++}`)
         values.push(name)
       }
       if (description !== undefined) {
-        fields.push('description = ?')
+        fields.push(`description = $${paramIndex++}`)
         values.push(description)
       }
       if (categoryId !== undefined) {
-        fields.push('category_id = ?')
+        fields.push(`category_id = $${paramIndex++}`)
         values.push(categoryId)
       }
       if (price !== undefined) {
-        fields.push('price = ?')
+        fields.push(`price = $${paramIndex++}`)
         values.push(price)
       }
       if (status !== undefined) {
-        fields.push('status = ?')
+        fields.push(`status = $${paramIndex++}`)
         values.push(status)
       }
 
@@ -136,20 +137,20 @@ export const DishModel = {
       }
 
       values.push(id)
-      const [result] = await pool.query(
-        `UPDATE Dishes SET ${fields.join(', ')} WHERE dish_id = ? AND deleted_at IS NULL`,
+      const result = await pool.query(
+        `UPDATE dishes SET ${fields.join(', ')} WHERE dish_id = $${paramIndex} AND deleted_at IS NULL`,
         values
       )
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw new NotFoundError('Dish not found')
       }
 
-      const [dishRows] = await pool.query(
+      const { rows: dishRows } = await pool.query(
         `SELECT d.*, dc.name as category_name 
-         FROM Dishes d 
-         LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
-         WHERE d.dish_id = ?`,
+         FROM dishes d 
+         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+         WHERE d.dish_id = $1`,
         [id]
       )
       return dishRows[0]
@@ -163,8 +164,8 @@ export const DishModel = {
 
   async delete (id) {
     try {
-      const [checkDishRows] = await pool.query(
-        'SELECT * FROM Dishes WHERE dish_id = ? AND deleted_at IS NULL',
+      const { rows: checkDishRows } = await pool.query(
+        'SELECT * FROM dishes WHERE dish_id = $1 AND deleted_at IS NULL',
         [id]
       )
       if (checkDishRows.length === 0) {
@@ -173,12 +174,12 @@ export const DishModel = {
 
       const dishToDelete = checkDishRows[0]
 
-      const [result] = await pool.query(
-        'UPDATE Dishes SET deleted_at = CURRENT_TIMESTAMP WHERE dish_id = ?',
+      const result = await pool.query(
+        'UPDATE dishes SET deleted_at = CURRENT_TIMESTAMP WHERE dish_id = $1',
         [id]
       )
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw new NotFoundError('Dish not found')
       }
 

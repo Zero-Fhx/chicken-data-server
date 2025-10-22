@@ -10,28 +10,28 @@ export const IngredientCategoryModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push('(name LIKE ? OR description LIKE ?)')
+        conditions.push(`(name LIKE $${params.length + 1} OR description LIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }
 
       if (filters.status) {
-        conditions.push('status = ?')
+        conditions.push(`status = $${params.length + 1}`)
         params.push(filters.status)
       }
 
       const whereClause = `WHERE ${conditions.join(' AND ')}`
 
-      const countQuery = `SELECT COUNT(*) AS total FROM Ingredient_Categories ${whereClause}`
-      const [[{ total }]] = await pool.query(countQuery, params)
+      const countQuery = `SELECT COUNT(*) AS total FROM ingredient_categories ${whereClause}`
+      const { rows: [{ total }] } = await pool.query(countQuery, params)
 
       const dataQuery = `
-        SELECT * FROM Ingredient_Categories 
+        SELECT * FROM ingredient_categories 
         ${whereClause} 
         ORDER BY category_id ASC 
-        LIMIT ? OFFSET ?
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
-      const [categoryRows] = await pool.query(dataQuery, [...params, parseInt(limit), offset])
+      const { rows: categoryRows } = await pool.query(dataQuery, [...params, parseInt(limit), offset])
 
       return { data: categoryRows, total }
     } catch (error) {
@@ -41,8 +41,8 @@ export const IngredientCategoryModel = {
 
   async getById (id) {
     try {
-      const [categoryRows] = await pool.query(
-        'SELECT * FROM Ingredient_Categories WHERE category_id = ? AND deleted_at IS NULL',
+      const { rows: categoryRows } = await pool.query(
+        'SELECT * FROM ingredient_categories WHERE category_id = $1 AND deleted_at IS NULL',
         [id]
       )
       if (categoryRows.length === 0) {
@@ -61,8 +61,8 @@ export const IngredientCategoryModel = {
     try {
       const { name, description, status = 'Active' } = categoryData
 
-      const [existing] = await pool.query(
-        'SELECT * FROM Ingredient_Categories WHERE name = ? AND deleted_at IS NULL',
+      const { rows: existing } = await pool.query(
+        'SELECT * FROM ingredient_categories WHERE name = $1 AND deleted_at IS NULL',
         [name]
       )
 
@@ -70,14 +70,9 @@ export const IngredientCategoryModel = {
         throw new BadRequestError('A category with this name already exists')
       }
 
-      const [result] = await pool.query(
-        'INSERT INTO Ingredient_Categories (name, description, status) VALUES (?, ?, ?)',
+      const { rows: categoryRows } = await pool.query(
+        'INSERT INTO ingredient_categories (name, description, status) VALUES ($1, $2, $3) RETURNING *',
         [name, description, status]
-      )
-
-      const [categoryRows] = await pool.query(
-        'SELECT * FROM Ingredient_Categories WHERE category_id = ?',
-        [result.insertId]
       )
       return categoryRows[0]
     } catch (error) {
@@ -99,9 +94,10 @@ export const IngredientCategoryModel = {
       const fields = []
       const values = []
 
+      let paramIndex = 1
       if (name !== undefined) {
-        const [existing] = await pool.query(
-          'SELECT * FROM Ingredient_Categories WHERE name = ? AND category_id != ? AND deleted_at IS NULL',
+        const { rows: existing } = await pool.query(
+          'SELECT * FROM ingredient_categories WHERE name = $1 AND category_id != $2 AND deleted_at IS NULL',
           [name, id]
         )
 
@@ -109,15 +105,15 @@ export const IngredientCategoryModel = {
           throw new BadRequestError('A category with this name already exists')
         }
 
-        fields.push('name = ?')
+        fields.push(`name = $${paramIndex++}`)
         values.push(name)
       }
       if (description !== undefined) {
-        fields.push('description = ?')
+        fields.push(`description = $${paramIndex++}`)
         values.push(description)
       }
       if (status !== undefined) {
-        fields.push('status = ?')
+        fields.push(`status = $${paramIndex++}`)
         values.push(status)
       }
 
@@ -126,17 +122,17 @@ export const IngredientCategoryModel = {
       }
 
       values.push(id)
-      const [result] = await pool.query(
-        `UPDATE Ingredient_Categories SET ${fields.join(', ')} WHERE category_id = ? AND deleted_at IS NULL`,
+      const result = await pool.query(
+        `UPDATE ingredient_categories SET ${fields.join(', ')} WHERE category_id = $${paramIndex} AND deleted_at IS NULL`,
         values
       )
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw new NotFoundError('Ingredient category not found')
       }
 
-      const [categoryRows] = await pool.query(
-        'SELECT * FROM Ingredient_Categories WHERE category_id = ?',
+      const { rows: categoryRows } = await pool.query(
+        'SELECT * FROM ingredient_categories WHERE category_id = $1',
         [id]
       )
       return categoryRows[0]
@@ -154,16 +150,16 @@ export const IngredientCategoryModel = {
         throw new BadRequestError('Cannot delete the General category')
       }
 
-      const [checkCategoryRows] = await pool.query(
-        'SELECT * FROM Ingredient_Categories WHERE category_id = ? AND deleted_at IS NULL',
+      const { rows: checkCategoryRows } = await pool.query(
+        'SELECT * FROM ingredient_categories WHERE category_id = $1 AND deleted_at IS NULL',
         [id]
       )
       if (checkCategoryRows.length === 0) {
         throw new NotFoundError('Ingredient category not found')
       }
 
-      const [[{ count }]] = await pool.query(
-        'SELECT COUNT(*) as count FROM Ingredients WHERE category_id = ? AND deleted_at IS NULL',
+      const { rows: [{ count }] } = await pool.query(
+        'SELECT COUNT(*) as count FROM ingredients WHERE category_id = $1 AND deleted_at IS NULL',
         [id]
       )
 
@@ -173,12 +169,12 @@ export const IngredientCategoryModel = {
 
       const categoryToDelete = checkCategoryRows[0]
 
-      const [result] = await pool.query(
-        'UPDATE Ingredient_Categories SET deleted_at = CURRENT_TIMESTAMP WHERE category_id = ?',
+      const result = await pool.query(
+        'UPDATE ingredient_categories SET deleted_at = CURRENT_TIMESTAMP WHERE category_id = $1',
         [id]
       )
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw new NotFoundError('Ingredient category not found')
       }
 

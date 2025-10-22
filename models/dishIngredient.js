@@ -4,8 +4,8 @@ import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError 
 export const DishIngredientModel = {
   async getByDishId (dishId) {
     try {
-      const [dishRows] = await pool.query(
-        'SELECT dish_id FROM dishes WHERE dish_id = ? AND deleted_at IS NULL',
+      const { rows: dishRows } = await pool.query(
+        'SELECT dish_id FROM dishes WHERE dish_id = $1 AND deleted_at IS NULL',
         [dishId]
       )
 
@@ -13,7 +13,7 @@ export const DishIngredientModel = {
         throw new NotFoundError('Dish not found')
       }
 
-      const [rows] = await pool.query(`
+      const { rows } = await pool.query(`
         SELECT 
           di.dish_ingredient_id,
           di.dish_id,
@@ -28,7 +28,7 @@ export const DishIngredientModel = {
         FROM dish_ingredients di
         INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
-        WHERE di.dish_id = ?
+        WHERE di.dish_id = $1
         ORDER BY di.dish_ingredient_id
       `, [dishId])
 
@@ -45,8 +45,8 @@ export const DishIngredientModel = {
     try {
       const { ingredient_id: ingredientId, quantity_used: quantityUsed } = ingredientData
 
-      const [dishRows] = await pool.query(
-        'SELECT dish_id FROM dishes WHERE dish_id = ? AND deleted_at IS NULL',
+      const { rows: dishRows } = await pool.query(
+        'SELECT dish_id FROM dishes WHERE dish_id = $1 AND deleted_at IS NULL',
         [dishId]
       )
 
@@ -54,8 +54,8 @@ export const DishIngredientModel = {
         throw new NotFoundError('Dish not found')
       }
 
-      const [ingredientRows] = await pool.query(
-        'SELECT ingredient_id FROM ingredients WHERE ingredient_id = ? AND deleted_at IS NULL',
+      const { rows: ingredientRows } = await pool.query(
+        'SELECT ingredient_id FROM ingredients WHERE ingredient_id = $1 AND deleted_at IS NULL',
         [ingredientId]
       )
 
@@ -63,8 +63,8 @@ export const DishIngredientModel = {
         throw new NotFoundError('Ingredient not found')
       }
 
-      const [existingRows] = await pool.query(
-        'SELECT * FROM dish_ingredients WHERE dish_id = ? AND ingredient_id = ?',
+      const { rows: existingRows } = await pool.query(
+        'SELECT * FROM dish_ingredients WHERE dish_id = $1 AND ingredient_id = $2',
         [dishId, ingredientId]
       )
 
@@ -72,12 +72,12 @@ export const DishIngredientModel = {
         throw new BadRequestError('This ingredient is already in the dish recipe')
       }
 
-      const [result] = await pool.query(
-        'INSERT INTO dish_ingredients (dish_id, ingredient_id, quantity_used) VALUES (?, ?, ?)',
+      const { rows: [dishIngredient] } = await pool.query(
+        'INSERT INTO dish_ingredients (dish_id, ingredient_id, quantity_used) VALUES ($1, $2, $3) RETURNING *',
         [dishId, ingredientId, quantityUsed]
       )
 
-      const [newRows] = await pool.query(`
+      const { rows: newRows } = await pool.query(`
         SELECT 
           di.dish_ingredient_id,
           di.dish_id,
@@ -87,8 +87,8 @@ export const DishIngredientModel = {
           i.unit as ingredient_unit
         FROM dish_ingredients di
         INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
-        WHERE di.dish_ingredient_id = ?
-      `, [result.insertId])
+        WHERE di.dish_ingredient_id = $1
+      `, [dishIngredient.dish_ingredient_id])
 
       return newRows[0]
     } catch (error) {
@@ -101,8 +101,8 @@ export const DishIngredientModel = {
 
   async updateQuantity (dishId, ingredientId, quantityUsed) {
     try {
-      const [existingRows] = await pool.query(
-        'SELECT * FROM dish_ingredients WHERE dish_id = ? AND ingredient_id = ?',
+      const { rows: existingRows } = await pool.query(
+        'SELECT * FROM dish_ingredients WHERE dish_id = $1 AND ingredient_id = $2',
         [dishId, ingredientId]
       )
 
@@ -111,11 +111,11 @@ export const DishIngredientModel = {
       }
 
       await pool.query(
-        'UPDATE dish_ingredients SET quantity_used = ? WHERE dish_id = ? AND ingredient_id = ?',
+        'UPDATE dish_ingredients SET quantity_used = $1 WHERE dish_id = $2 AND ingredient_id = $3',
         [quantityUsed, dishId, ingredientId]
       )
 
-      const [updatedRows] = await pool.query(`
+      const { rows: updatedRows } = await pool.query(`
         SELECT 
           di.dish_ingredient_id,
           di.dish_id,
@@ -125,7 +125,7 @@ export const DishIngredientModel = {
           i.unit as ingredient_unit
         FROM dish_ingredients di
         INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
-        WHERE di.dish_id = ? AND di.ingredient_id = ?
+        WHERE di.dish_id = $1 AND di.ingredient_id = $2
       `, [dishId, ingredientId])
 
       return updatedRows[0]
@@ -139,14 +139,14 @@ export const DishIngredientModel = {
 
   async removeIngredient (dishId, ingredientId) {
     try {
-      const [existingRows] = await pool.query(`
+      const { rows: existingRows } = await pool.query(`
         SELECT 
           di.*,
           i.name as ingredient_name,
           i.unit as ingredient_unit
         FROM dish_ingredients di
         INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
-        WHERE di.dish_id = ? AND di.ingredient_id = ?
+        WHERE di.dish_id = $1 AND di.ingredient_id = $2
       `, [dishId, ingredientId])
 
       if (existingRows.length === 0) {
@@ -156,7 +156,7 @@ export const DishIngredientModel = {
       const deletedRecord = existingRows[0]
 
       await pool.query(
-        'DELETE FROM dish_ingredients WHERE dish_id = ? AND ingredient_id = ?',
+        'DELETE FROM dish_ingredients WHERE dish_id = $1 AND ingredient_id = $2',
         [dishId, ingredientId]
       )
 
@@ -170,13 +170,13 @@ export const DishIngredientModel = {
   },
 
   async replaceAllIngredients (dishId, ingredients) {
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
-      const [dishRows] = await connection.query(
-        'SELECT dish_id FROM dishes WHERE dish_id = ? AND deleted_at IS NULL',
+      const { rows: dishRows } = await client.query(
+        'SELECT dish_id FROM dishes WHERE dish_id = $1 AND deleted_at IS NULL',
         [dishId]
       )
 
@@ -184,14 +184,14 @@ export const DishIngredientModel = {
         throw new NotFoundError('Dish not found')
       }
 
-      await connection.query('DELETE FROM dish_ingredients WHERE dish_id = ?', [dishId])
+      await client.query('DELETE FROM dish_ingredients WHERE dish_id = $1', [dishId])
 
       if (ingredients && ingredients.length > 0) {
         for (const ingredient of ingredients) {
           const { ingredient_id: ingredientId, quantity_used: quantityUsed } = ingredient
 
-          const [ingredientRows] = await connection.query(
-            'SELECT ingredient_id FROM ingredients WHERE ingredient_id = ? AND deleted_at IS NULL',
+          const { rows: ingredientRows } = await client.query(
+            'SELECT ingredient_id FROM ingredients WHERE ingredient_id = $1 AND deleted_at IS NULL',
             [ingredientId]
           )
 
@@ -199,24 +199,24 @@ export const DishIngredientModel = {
             throw new NotFoundError(`Ingredient with id ${ingredientId} not found`)
           }
 
-          await connection.query(
-            'INSERT INTO dish_ingredients (dish_id, ingredient_id, quantity_used) VALUES (?, ?, ?)',
+          await client.query(
+            'INSERT INTO dish_ingredients (dish_id, ingredient_id, quantity_used) VALUES ($1, $2, $3)',
             [dishId, ingredientId, quantityUsed]
           )
         }
       }
 
-      await connection.commit()
+      await client.query('COMMIT')
 
       return await this.getByDishId(dishId)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   }
 }

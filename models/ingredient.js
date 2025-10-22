@@ -10,18 +10,18 @@ export const IngredientModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push('(i.name LIKE ?)')
+        conditions.push(`(i.name LIKE $${params.length + 1})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm)
       }
 
       if (filters.categoryId) {
-        conditions.push('i.category_id = ?')
+        conditions.push(`i.category_id = $${params.length + 1}`)
         params.push(filters.categoryId)
       }
 
       if (filters.status) {
-        conditions.push('i.status = ?')
+        conditions.push(`i.status = $${params.length + 1}`)
         params.push(filters.status)
       }
 
@@ -33,21 +33,21 @@ export const IngredientModel = {
 
       const countQuery = `
         SELECT COUNT(*) AS total 
-        FROM Ingredients i 
-        LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
+        FROM ingredients i 
+        LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
         ${whereClause}
       `
-      const [[{ total }]] = await pool.query(countQuery, params)
+      const { rows: [{ total }] } = await pool.query(countQuery, params)
 
       const dataQuery = `
         SELECT i.*, ic.name as category_name 
-        FROM Ingredients i 
-        LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
+        FROM ingredients i 
+        LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
         ${whereClause} 
         ORDER BY i.ingredient_id DESC 
-        LIMIT ? OFFSET ?
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
-      const [ingredientRows] = await pool.query(dataQuery, [...params, parseInt(limit), offset])
+      const { rows: ingredientRows } = await pool.query(dataQuery, [...params, parseInt(limit), offset])
 
       return { data: ingredientRows, total }
     } catch (error) {
@@ -57,11 +57,11 @@ export const IngredientModel = {
 
   async getById (id) {
     try {
-      const [ingredientRows] = await pool.query(
+      const { rows: ingredientRows } = await pool.query(
         `SELECT i.*, ic.name as category_name 
-         FROM Ingredients i 
-         LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
-         WHERE i.ingredient_id = ? AND i.deleted_at IS NULL`,
+         FROM ingredients i 
+         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+         WHERE i.ingredient_id = $1 AND i.deleted_at IS NULL`,
         [id]
       )
       if (ingredientRows.length === 0) {
@@ -79,17 +79,17 @@ export const IngredientModel = {
   async create (ingredientData) {
     try {
       const { name, unit, categoryId = 1, status = 'Active', stock = 0, minimumStock = 0 } = ingredientData
-      const [result] = await pool.query(
-        'INSERT INTO Ingredients (name, unit, category_id, status, stock, minimum_stock) VALUES (?, ?, ?, ?, ?, ?)',
+      const { rows: [ingredient] } = await pool.query(
+        'INSERT INTO ingredients (name, unit, category_id, status, stock, minimum_stock) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
         [name, unit, categoryId, status, stock, minimumStock]
       )
 
-      const [ingredientRows] = await pool.query(
+      const { rows: ingredientRows } = await pool.query(
         `SELECT i.*, ic.name as category_name 
-         FROM Ingredients i 
-         LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
-         WHERE i.ingredient_id = ?`,
-        [result.insertId]
+         FROM ingredients i 
+         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+         WHERE i.ingredient_id = $1`,
+        [ingredient.ingredient_id]
       )
       return ingredientRows[0]
     } catch (error) {
@@ -104,28 +104,29 @@ export const IngredientModel = {
       const fields = []
       const values = []
 
+      let paramIndex = 1
       if (name !== undefined) {
-        fields.push('name = ?')
+        fields.push(`name = $${paramIndex++}`)
         values.push(name)
       }
       if (unit !== undefined) {
-        fields.push('unit = ?')
+        fields.push(`unit = $${paramIndex++}`)
         values.push(unit)
       }
       if (categoryId !== undefined) {
-        fields.push('category_id = ?')
+        fields.push(`category_id = $${paramIndex++}`)
         values.push(categoryId)
       }
       if (status !== undefined) {
-        fields.push('status = ?')
+        fields.push(`status = $${paramIndex++}`)
         values.push(status)
       }
       if (stock !== undefined) {
-        fields.push('stock = ?')
+        fields.push(`stock = $${paramIndex++}`)
         values.push(stock)
       }
       if (minimumStock !== undefined) {
-        fields.push('minimum_stock = ?')
+        fields.push(`minimum_stock = $${paramIndex++}`)
         values.push(minimumStock)
       }
 
@@ -134,20 +135,20 @@ export const IngredientModel = {
       }
 
       values.push(id)
-      const [result] = await pool.query(
-        `UPDATE Ingredients SET ${fields.join(', ')} WHERE ingredient_id = ? AND deleted_at IS NULL`,
+      const result = await pool.query(
+        `UPDATE ingredients SET ${fields.join(', ')} WHERE ingredient_id = $${paramIndex} AND deleted_at IS NULL`,
         values
       )
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw new NotFoundError('Ingredient not found')
       }
 
-      const [ingredientRows] = await pool.query(
+      const { rows: ingredientRows } = await pool.query(
         `SELECT i.*, ic.name as category_name 
-         FROM Ingredients i 
-         LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
-         WHERE i.ingredient_id = ?`,
+         FROM ingredients i 
+         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+         WHERE i.ingredient_id = $1`,
         [id]
       )
       return ingredientRows[0]
@@ -161,8 +162,8 @@ export const IngredientModel = {
 
   async delete (id) {
     try {
-      const [checkIngredientRows] = await pool.query(
-        'SELECT * FROM Ingredients WHERE ingredient_id = ? AND deleted_at IS NULL',
+      const { rows: checkIngredientRows } = await pool.query(
+        'SELECT * FROM ingredients WHERE ingredient_id = $1 AND deleted_at IS NULL',
         [id]
       )
       if (checkIngredientRows.length === 0) {
@@ -171,12 +172,12 @@ export const IngredientModel = {
 
       const ingredientToDelete = checkIngredientRows[0]
 
-      const [result] = await pool.query(
-        'UPDATE Ingredients SET deleted_at = CURRENT_TIMESTAMP WHERE ingredient_id = ?',
+      const result = await pool.query(
+        'UPDATE ingredients SET deleted_at = CURRENT_TIMESTAMP WHERE ingredient_id = $1',
         [id]
       )
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw new NotFoundError('Ingredient not found')
       }
 

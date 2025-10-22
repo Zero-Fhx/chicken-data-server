@@ -10,28 +10,28 @@ export const PurchaseModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push('(p.notes LIKE ? OR s.name LIKE ?)')
+        conditions.push(`(p.notes LIKE $${params.length + 1} OR s.name LIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }
 
       if (filters.status) {
-        conditions.push('p.status = ?')
+        conditions.push(`p.status = $${params.length + 1}`)
         params.push(filters.status)
       }
 
       if (filters.supplierId) {
-        conditions.push('p.supplier_id = ?')
+        conditions.push(`p.supplier_id = $${params.length + 1}`)
         params.push(filters.supplierId)
       }
 
       if (filters.startDate) {
-        conditions.push('p.purchase_date >= ?')
+        conditions.push(`p.purchase_date >= $${params.length + 1}`)
         params.push(filters.startDate)
       }
 
       if (filters.endDate) {
-        conditions.push('p.purchase_date <= ?')
+        conditions.push(`p.purchase_date <= $${params.length + 1}`)
         params.push(filters.endDate)
       }
 
@@ -54,14 +54,14 @@ export const PurchaseModel = {
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
         ${whereClause}
         ORDER BY p.purchase_date DESC, p.purchase_id DESC 
-        LIMIT ? OFFSET ?
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
       params.push(parseInt(limit), offset)
 
-      const [purchaseRows] = await pool.query(query, params)
+      const { rows: purchaseRows } = await pool.query(query, params)
 
       for (const purchase of purchaseRows) {
-        const [detailRows] = await pool.query(`
+        const { rows: detailRows } = await pool.query(`
           SELECT 
             pd.*,
             i.ingredient_id,
@@ -76,8 +76,8 @@ export const PurchaseModel = {
             ic.name as ingredient_category_name
           FROM purchase_details pd
           LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
-          LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
-          WHERE pd.purchase_id = ?
+          LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+          WHERE pd.purchase_id = $1
           ORDER BY pd.purchase_detail_id
         `, [purchase.purchase_id])
         purchase.details = detailRows
@@ -90,7 +90,7 @@ export const PurchaseModel = {
         ${whereClause}
       `
 
-      const [[{ total }]] = await pool.query(countQuery, params.slice(0, -2))
+      const { rows: [{ total }] } = await pool.query(countQuery, params.slice(0, -2))
       return { data: purchaseRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)
@@ -99,7 +99,7 @@ export const PurchaseModel = {
 
   async getById (id) {
     try {
-      const [purchaseRows] = await pool.query(`
+      const { rows: purchaseRows } = await pool.query(`
         SELECT 
           p.*,
           s.supplier_id,
@@ -114,7 +114,7 @@ export const PurchaseModel = {
           s.updated_at as supplier_updated_at
         FROM purchases p 
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
-        WHERE p.purchase_id = ?
+        WHERE p.purchase_id = $1
       `, [id])
 
       if (purchaseRows.length === 0) {
@@ -123,7 +123,7 @@ export const PurchaseModel = {
 
       const purchase = purchaseRows[0]
 
-      const [detailRows] = await pool.query(`
+      const { rows: detailRows } = await pool.query(`
         SELECT 
           pd.*,
           i.ingredient_id,
@@ -138,8 +138,8 @@ export const PurchaseModel = {
           ic.name as ingredient_category_name
         FROM purchase_details pd
         LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
-        LEFT JOIN Ingredient_Categories ic ON i.category_id = ic.category_id
-        WHERE pd.purchase_id = ?
+        LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+        WHERE pd.purchase_id = $1
         ORDER BY pd.purchase_detail_id
       `, [id])
 

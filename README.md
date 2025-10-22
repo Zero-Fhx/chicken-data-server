@@ -7,7 +7,7 @@ API REST para la gestión de datos de un restaurante. Permite administrar platil
 ### Requisitos Previos
 
 - Node.js (v18 o superior)
-- MySQL (v8.0 o superior)
+- PostgreSQL (v13 o superior)
 - pnpm (v10.16.1 o superior)
 
 ### Instalación
@@ -23,12 +23,31 @@ pnpm install
 # Configurar variables de entorno
 cp .env.example .env
 
+# Editar .env y configurar la URL de PostgreSQL
+# Ejemplo: DATABASE_URL=postgresql://username:password@localhost:5432/chicken_data_db
+
 # Iniciar el servidor en modo desarrollo
 pnpm dev
 
 # O iniciar en modo producción
 pnpm start
 ```
+
+### Configuración de PostgreSQL
+
+1. **Instalar PostgreSQL** en tu sistema si no lo tienes instalado
+2. **Crear la base de datos:**
+   ```sql
+   CREATE DATABASE chicken_data_db;
+   ```
+3. **Configurar la variable de entorno** `DATABASE_URL` en tu archivo `.env`:
+   ```bash
+   DATABASE_URL=postgresql://username:password@localhost:5432/chicken_data_db
+   ```
+4. **Para producción con SSL** (como Supabase):
+   ```bash
+   DATABASE_URL=postgresql://username:password@host:5432/database?sslmode=require
+   ```
 
 ### Verificación de Estado
 
@@ -220,7 +239,7 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 
 - **Node.js** - Entorno de ejecución
 - **Express** - Framework web
-- **MySQL2** - Cliente de base de datos
+- **PostgreSQL (pg)** - Cliente de base de datos
 - **Zod** - Validación de esquemas
 - **CORS** - Habilitación de CORS
 - **Morgan** - Logger de peticiones HTTP
@@ -232,14 +251,15 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 - Los valores de estado (`status`) son sensibles a mayúsculas: `Active` o `Inactive`.
 - Los IDs son numéricos y autoincrementales.
 - Las respuestas incluyen transformación de nombres de campos de snake_case a camelCase.
+- La base de datos PostgreSQL usa tablas en minúsculas con snake_case (ej: `dishes`, `ingredient_categories`).
 
 ## 🔗 Enlaces Útiles
 
 - [Documentación de Express](https://expressjs.com/)
 - [Documentación de Zod](https://zod.dev/)
-- [MySQL Documentation](https://dev.mysql.com/doc/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
 ---
 
 **Versión:** 1.0.0  
-**Última actualización:** Octubre 2025
+**Última actualización:** Octubre 2025 (Migrado a PostgreSQL)

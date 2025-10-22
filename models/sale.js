@@ -10,23 +10,23 @@ export const SaleModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push('(notes LIKE ? OR customer LIKE ?)')
+        conditions.push(`(notes LIKE $${params.length + 1} OR customer LIKE $${params.length + 2})`)
         const searchTerm = `%${filters.search}%`
         params.push(searchTerm, searchTerm)
       }
 
       if (filters.status) {
-        conditions.push('status = ?')
+        conditions.push(`status = $${params.length + 1}`)
         params.push(filters.status)
       }
 
       if (filters.startDate) {
-        conditions.push('sale_date >= ?')
+        conditions.push(`sale_date >= $${params.length + 1}`)
         params.push(filters.startDate)
       }
 
       if (filters.endDate) {
-        conditions.push('sale_date <= ?')
+        conditions.push(`sale_date <= $${params.length + 1}`)
         params.push(filters.endDate)
       }
 
@@ -36,14 +36,14 @@ export const SaleModel = {
         SELECT * FROM sales 
         ${whereClause}
         ORDER BY sale_date DESC, sale_id DESC 
-        LIMIT ? OFFSET ?
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
       params.push(parseInt(limit), offset)
 
-      const [saleRows] = await pool.query(query, params)
+      const { rows: saleRows } = await pool.query(query, params)
 
       for (const sale of saleRows) {
-        const [detailRows] = await pool.query(`
+        const { rows: detailRows } = await pool.query(`
           SELECT 
             sd.*,
             d.dish_id,
@@ -57,8 +57,8 @@ export const SaleModel = {
             dc.name as dish_category_name
           FROM sale_details sd
           LEFT JOIN dishes d ON sd.dish_id = d.dish_id
-          LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
-          WHERE sd.sale_id = ?
+          LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+          WHERE sd.sale_id = $1
           ORDER BY sd.sale_detail_id
         `, [sale.sale_id])
         sale.details = detailRows
@@ -66,7 +66,7 @@ export const SaleModel = {
 
       const countQuery = `SELECT COUNT(*) AS total FROM sales ${whereClause}`
 
-      const [[{ total }]] = await pool.query(countQuery, params.slice(0, -2))
+      const { rows: [{ total }] } = await pool.query(countQuery, params.slice(0, -2))
       return { data: saleRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)
@@ -75,9 +75,9 @@ export const SaleModel = {
 
   async getById (id) {
     try {
-      const [saleRows] = await pool.query(`
+      const { rows: saleRows } = await pool.query(`
         SELECT * FROM sales 
-        WHERE sale_id = ?
+        WHERE sale_id = $1
       `, [id])
 
       if (saleRows.length === 0) {
@@ -86,7 +86,7 @@ export const SaleModel = {
 
       const sale = saleRows[0]
 
-      const [detailRows] = await pool.query(`
+      const { rows: detailRows } = await pool.query(`
         SELECT 
           sd.*,
           d.dish_id,
@@ -100,8 +100,8 @@ export const SaleModel = {
           dc.name as dish_category_name
         FROM sale_details sd
         LEFT JOIN dishes d ON sd.dish_id = d.dish_id
-        LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
-        WHERE sd.sale_id = ?
+        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+        WHERE sd.sale_id = $1
         ORDER BY sd.sale_detail_id
       `, [id])
 
