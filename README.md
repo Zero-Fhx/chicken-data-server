@@ -330,6 +330,6 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 
 ---
 
-**Versión:** 2.0.0
-**Descripción:** Migración a PostgreSQL completada, mejora en la estructura de endpoints y documentación.
-**Última actualización:** Octubre 2025
+**Versión:** 2.0.0  
+**Descripción:** Migración a PostgreSQL completada, mejora en la estructura de endpoints y documentación.  
+**Última actualización:** Octubre 2025 (Migrado a PostgreSQL)
