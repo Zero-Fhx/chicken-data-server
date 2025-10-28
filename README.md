@@ -73,15 +73,15 @@ GET /health
 
 ### Recursos Principales
 
-| Recurso                        | Endpoint Base                | Descripción                            |
-| ------------------------------ | ---------------------------- | -------------------------------------- |
-| **Platillos**                  | `/api/dishes`                | Gestión de platillos del menú          |
-| **Categorías de Platillos**    | `/api/dish-categories`       | Categorías para organizar platillos    |
-| **Ingredientes**               | `/api/ingredients`           | Gestión de ingredientes                |
-| **Categorías de Ingredientes** | `/api/ingredient-categories` | Categorías para organizar ingredientes |
-| **Proveedores**                | `/api/suppliers`             | Gestión de proveedores                 |
-| **Compras**                    | `/api/purchases`             | Registro de compras de ingredientes    |
-| **Ventas**                     | `/api/sales`                 | Registro de ventas de platillos        |
+| Recurso                        | Endpoints agrupados                                                | Descripción                            |
+| ------------------------------ | ------------------------------------------------------------------ | -------------------------------------- |
+| **Platillos**                  | `/api/dishes`<br>`/api/dishes/:id`<br>`/api/dishes/:dishId/recipe` | Gestión de platillos y recetas         |
+| **Categorías de Platillos**    | `/api/dish-categories`<br>`/api/dish-categories/:id`               | Categorías para organizar platillos    |
+| **Ingredientes**               | `/api/ingredients`<br>`/api/ingredients/:id`                       | Gestión de ingredientes                |
+| **Categorías de Ingredientes** | `/api/ingredient-categories`<br>`/api/ingredient-categories/:id`   | Categorías para organizar ingredientes |
+| **Proveedores**                | `/api/suppliers`<br>`/api/suppliers/:id`                           | Gestión de proveedores                 |
+| **Compras**                    | `/api/purchases`<br>`/api/purchases/:id`                           | Registro de compras de ingredientes    |
+| **Ventas**                     | `/api/sales`<br>`/api/sales/:id`                                   | Registro de ventas de platillos        |
 
 ### Documentación Detallada
 
@@ -96,7 +96,7 @@ GET /health
 
 ## 🔗 Endpoints Principales
 
-### Índice de Endpoints
+### Índice de Endpoints agrupados
 
 **Request:**
 
@@ -111,13 +111,82 @@ GET /
   "message": "Chicken Data API",
   "endpoints": {
     "health": "/health",
-    "dishes": "/api/dishes",
-    "dishCategories": "/api/dish-categories",
-    "suppliers": "/api/suppliers",
-    "ingredients": "/api/ingredients",
-    "ingredientCategories": "/api/ingredient-categories",
-    "purchases": "/api/purchases",
-    "sales": "/api/sales"
+    "dishes": {
+      "list": "/api/dishes",
+      "categories": "/api/dish-categories"
+    },
+    "suppliers": { "list": "/api/suppliers" },
+    "ingredients": {
+      "list": "/api/ingredients",
+      "categories": "/api/ingredient-categories"
+    },
+    "purchases": { "list": "/api/purchases" },
+    "sales": { "list": "/api/sales" }
+  },
+  "reference": {
+    "health": {
+      "GET /health": "Estado del servidor y base de datos"
+    },
+    "dishes": {
+      "main": {
+        "GET /api/dishes": "Lista de platillos (incluye detalles, sin receta)",
+        "GET /api/dishes/:id": "Obtener un platillo (solo datos principales, sin receta)",
+        "POST /api/dishes": "Crear platillo",
+        "PATCH /api/dishes/:id": "Actualizar platillo",
+        "DELETE /api/dishes/:id": "Eliminar platillo"
+      },
+      "recipe": {
+        "GET /api/dishes/:dishId/recipe": "Obtener receta de platillo",
+        "PUT /api/dishes/:dishId/recipe": "Reemplazar receta de platillo",
+        "POST /api/dishes/:dishId/recipe": "Agregar ingrediente a receta",
+        "PATCH /api/dishes/:dishId/recipe/:ingredientId": "Actualizar cantidad de ingrediente en receta",
+        "DELETE /api/dishes/:dishId/recipe/:ingredientId": "Eliminar ingrediente de receta"
+      },
+      "categories": {
+        "GET /api/dish-categories": "Lista de categorías de platillos",
+        "GET /api/dish-categories/:id": "Obtener una categoría de platillo",
+        "POST /api/dish-categories": "Crear categoría de platillo",
+        "PATCH /api/dish-categories/:id": "Actualizar categoría de platillo",
+        "DELETE /api/dish-categories/:id": "Eliminar categoría de platillo"
+      }
+    },
+    "ingredients": {
+      "main": {
+        "GET /api/ingredients": "Lista de ingredientes (incluye detalles)",
+        "GET /api/ingredients/:id": "Obtener un ingrediente (solo datos principales)",
+        "POST /api/ingredients": "Crear ingrediente",
+        "PATCH /api/ingredients/:id": "Actualizar ingrediente",
+        "DELETE /api/ingredients/:id": "Eliminar ingrediente"
+      },
+      "categories": {
+        "GET /api/ingredient-categories": "Lista de categorías de ingredientes",
+        "GET /api/ingredient-categories/:id": "Obtener una categoría de ingrediente",
+        "POST /api/ingredient-categories": "Crear categoría de ingrediente",
+        "PATCH /api/ingredient-categories/:id": "Actualizar categoría de ingrediente",
+        "DELETE /api/ingredient-categories/:id": "Eliminar categoría de ingrediente"
+      }
+    },
+    "suppliers": {
+      "GET /api/suppliers": "Lista de proveedores",
+      "GET /api/suppliers/:id": "Obtener un proveedor",
+      "POST /api/suppliers": "Crear proveedor",
+      "PATCH /api/suppliers/:id": "Actualizar proveedor",
+      "DELETE /api/suppliers/:id": "Eliminar proveedor"
+    },
+    "purchases": {
+      "GET /api/purchases": "Lista de compras",
+      "GET /api/purchases/:id": "Obtener una compra",
+      "POST /api/purchases": "Registrar compra",
+      "PATCH /api/purchases/:id": "Actualizar compra",
+      "DELETE /api/purchases/:id": "Eliminar compra"
+    },
+    "sales": {
+      "GET /api/sales": "Lista de ventas",
+      "GET /api/sales/:id": "Obtener una venta",
+      "POST /api/sales": "Registrar venta",
+      "PATCH /api/sales/:id": "Actualizar venta",
+      "DELETE /api/sales/:id": "Eliminar venta"
+    }
   }
 }
 ```
@@ -261,5 +330,6 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 
 ---
 
-**Versión:** 1.0.0  
-**Última actualización:** Octubre 2025 (Migrado a PostgreSQL)
+**Versión:** 2.0.0
+**Descripción:** Migración a PostgreSQL completada, mejora en la estructura de endpoints y documentación.
+**Última actualización:** Octubre 2025
