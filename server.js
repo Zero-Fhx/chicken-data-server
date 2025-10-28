@@ -30,24 +30,32 @@ app.get('/favicon.ico', (req, res) => {
 const ENDPOINTS = {
   Health: '/health',
   Dishes: '/api/dishes',
-  Dish: '/api/dishes/:id',
-  DishRecipe: '/api/dishes/:dishId/recipe',
   DishCategories: '/api/dish-categories',
   Suppliers: '/api/suppliers',
-  Supplier: '/api/suppliers/:id',
   Ingredients: '/api/ingredients',
-  Ingredient: '/api/ingredients/:id',
   IngredientCategories: '/api/ingredient-categories',
   Purchases: '/api/purchases',
-  Purchase: '/api/purchases/:id',
   Sales: '/api/sales',
-  Sale: '/api/sales/:id'
 }
 
 app.get('/', (req, res) => {
   res.json({
     message: 'Chicken Data API',
     endpoints: {
+      health: ENDPOINTS.Health,
+      dishes: {
+        list: ENDPOINTS.Dishes,
+        categories: ENDPOINTS.DishCategories
+      },
+      ingredients: {
+        list: ENDPOINTS.Ingredients,
+        categories: ENDPOINTS.IngredientCategories
+      },
+      suppliers: { list: ENDPOINTS.Suppliers },
+      purchases: { list: ENDPOINTS.Purchases },
+      sales: { list: ENDPOINTS.Sales }
+    },
+    reference: {
       health: {
         'GET /health': 'Estado del servidor y base de datos'
       },
@@ -138,11 +146,17 @@ app.get('/endpoints', (req, res) => {
     message: 'Available API endpoints - Chicken Data API',
     endpoints: {
       health: ENDPOINTS.Health,
-      dishes: ENDPOINTS.Dishes,
-      suppliers: ENDPOINTS.Suppliers,
-      ingredients: ENDPOINTS.Ingredients,
-      purchases: ENDPOINTS.Purchases,
-      sales: ENDPOINTS.Sales
+      dishes: {
+        list: ENDPOINTS.Dishes,
+        categories: ENDPOINTS.DishCategories
+      },
+      ingredients: {
+        list: ENDPOINTS.Ingredients,
+        categories: ENDPOINTS.IngredientCategories
+      },
+      suppliers: { list: ENDPOINTS.Suppliers },
+      purchases: { list: ENDPOINTS.Purchases },
+      sales: { list: ENDPOINTS.Sales }
     }
   })
 })
@@ -162,13 +176,17 @@ app.use((req, res) => {
     message: 'Endpoint no encontrado',
     availableEndpoints: {
       health: ENDPOINTS.Health,
-      dishes: ENDPOINTS.Dishes,
-      dishCategories: ENDPOINTS.DishCategories,
-      suppliers: ENDPOINTS.Suppliers,
-      ingredients: ENDPOINTS.Ingredients,
-      ingredientCategories: ENDPOINTS.IngredientCategories,
-      purchases: ENDPOINTS.Purchases,
-      sales: ENDPOINTS.Sales
+      dishes: {
+        list: ENDPOINTS.Dishes,
+        categories: ENDPOINTS.DishCategories
+      },
+      ingredients: {
+        list: ENDPOINTS.Ingredients,
+        categories: ENDPOINTS.IngredientCategories
+      },
+      suppliers: { list: ENDPOINTS.Suppliers },
+      purchases: { list: ENDPOINTS.Purchases },
+      sales: { list: ENDPOINTS.Sales }
     }
   })
 })
