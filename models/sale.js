@@ -269,42 +269,4 @@ export const SaleModel = {
     }
   },
 
-  async getDetailsBySaleId (saleId, { page = 1, limit = 10 } = {}) {
-    try {
-      const [saleRows] = await pool.query(
-        'SELECT sale_id FROM sales WHERE sale_id = ?',
-        [saleId]
-      )
-
-      if (saleRows.length === 0) {
-        throw new NotFoundError('Sale not found')
-      }
-
-      const offset = (parseInt(page) - 1) * parseInt(limit)
-      const [detailRows] = await pool.query(`
-        SELECT 
-          sd.*,
-          d.name as dish_name,
-          dc.name as dish_category
-        FROM sale_details sd
-        LEFT JOIN dishes d ON sd.dish_id = d.dish_id
-        LEFT JOIN Dish_Categories dc ON d.category_id = dc.category_id
-        WHERE sd.sale_id = ?
-        ORDER BY sd.sale_detail_id
-        LIMIT ? OFFSET ?
-      `, [saleId, parseInt(limit), offset])
-
-      const [[{ total }]] = await pool.query(
-        'SELECT COUNT(*) AS total FROM sale_details WHERE sale_id = ?',
-        [saleId]
-      )
-
-      return { data: detailRows, total }
-    } catch (error) {
-      if (isCustomUserError(error)) {
-        throw error
-      }
-      throw new InternalServerError(error.message)
-    }
-  }
 }

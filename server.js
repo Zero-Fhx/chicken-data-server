@@ -30,26 +30,87 @@ app.get('/favicon.ico', (req, res) => {
 const ENDPOINTS = {
   Health: '/health',
   Dishes: '/api/dishes',
+  Dish: '/api/dishes/:id',
+  DishRecipe: '/api/dishes/:dishId/recipe',
   DishCategories: '/api/dish-categories',
   Suppliers: '/api/suppliers',
+  Supplier: '/api/suppliers/:id',
   Ingredients: '/api/ingredients',
+  Ingredient: '/api/ingredients/:id',
   IngredientCategories: '/api/ingredient-categories',
   Purchases: '/api/purchases',
-  Sales: '/api/sales'
+  Purchase: '/api/purchases/:id',
+  Sales: '/api/sales',
+  Sale: '/api/sales/:id'
 }
 
 app.get('/', (req, res) => {
   res.json({
     message: 'Chicken Data API',
     endpoints: {
-      health: ENDPOINTS.Health,
-      dishes: ENDPOINTS.Dishes,
-      dishCategories: ENDPOINTS.DishCategories,
-      suppliers: ENDPOINTS.Suppliers,
-      ingredients: ENDPOINTS.Ingredients,
-      ingredientCategories: ENDPOINTS.IngredientCategories,
-      purchases: ENDPOINTS.Purchases,
-      sales: ENDPOINTS.Sales
+      health: {
+        'GET /health': 'Estado del servidor y base de datos'
+      },
+      dishes: {
+        main: {
+          'GET /api/dishes': 'Lista de platillos (incluye detalles, sin receta)',
+          'GET /api/dishes/:id': 'Obtener un platillo (solo datos principales, sin receta)',
+          'POST /api/dishes': 'Crear platillo',
+          'PATCH /api/dishes/:id': 'Actualizar platillo',
+          'DELETE /api/dishes/:id': 'Eliminar platillo'
+        },
+        recipe: {
+          'GET /api/dishes/:dishId/recipe': 'Obtener receta de platillo',
+          'PUT /api/dishes/:dishId/recipe': 'Reemplazar receta de platillo',
+          'POST /api/dishes/:dishId/recipe': 'Agregar ingrediente a receta',
+          'PATCH /api/dishes/:dishId/recipe/:ingredientId': 'Actualizar cantidad de ingrediente en receta',
+          'DELETE /api/dishes/:dishId/recipe/:ingredientId': 'Eliminar ingrediente de receta'
+        },
+        categories: {
+          'GET /api/dish-categories': 'Lista de categorías de platillos',
+          'GET /api/dish-categories/:id': 'Obtener una categoría de platillo',
+          'POST /api/dish-categories': 'Crear categoría de platillo',
+          'PATCH /api/dish-categories/:id': 'Actualizar categoría de platillo',
+          'DELETE /api/dish-categories/:id': 'Eliminar categoría de platillo'
+        }
+      },
+      ingredients: {
+        main: {
+          'GET /api/ingredients': 'Lista de ingredientes (incluye detalles)',
+          'GET /api/ingredients/:id': 'Obtener un ingrediente (solo datos principales)',
+          'POST /api/ingredients': 'Crear ingrediente',
+          'PATCH /api/ingredients/:id': 'Actualizar ingrediente',
+          'DELETE /api/ingredients/:id': 'Eliminar ingrediente'
+        },
+        categories: {
+          'GET /api/ingredient-categories': 'Lista de categorías de ingredientes',
+          'GET /api/ingredient-categories/:id': 'Obtener una categoría de ingrediente',
+          'POST /api/ingredient-categories': 'Crear categoría de ingrediente',
+          'PATCH /api/ingredient-categories/:id': 'Actualizar categoría de ingrediente',
+          'DELETE /api/ingredient-categories/:id': 'Eliminar categoría de ingrediente'
+        }
+      },
+      suppliers: {
+        'GET /api/suppliers': 'Lista de proveedores',
+        'GET /api/suppliers/:id': 'Obtener un proveedor',
+        'POST /api/suppliers': 'Crear proveedor',
+        'PATCH /api/suppliers/:id': 'Actualizar proveedor',
+        'DELETE /api/suppliers/:id': 'Eliminar proveedor'
+      },
+      purchases: {
+        'GET /api/purchases': 'Lista de compras',
+        'GET /api/purchases/:id': 'Obtener una compra',
+        'POST /api/purchases': 'Registrar compra',
+        'PATCH /api/purchases/:id': 'Actualizar compra',
+        'DELETE /api/purchases/:id': 'Eliminar compra'
+      },
+      sales: {
+        'GET /api/sales': 'Lista de ventas',
+        'GET /api/sales/:id': 'Obtener una venta',
+        'POST /api/sales': 'Registrar venta',
+        'PATCH /api/sales/:id': 'Actualizar venta',
+        'DELETE /api/sales/:id': 'Eliminar venta'
+      }
     }
   })
 })

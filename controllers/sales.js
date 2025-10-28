@@ -1,8 +1,5 @@
 import { SaleModel } from '../models/sale.js'
-import {
-  transformSale,
-  transformSaleDetail
-} from '../utils/apiTransformer.js'
+import { transformSale } from '../utils/apiTransformer.js'
 import { getPagination } from '../utils/pagination.js'
 import { handleError, handlePageError, handleResponse, handleValidationError } from '../utils/responseHandler.js'
 import { SaleValidates } from '../utils/validates.js'
@@ -127,36 +124,4 @@ export const SalesController = {
     }
   },
 
-  async getSaleDetails (req, res) {
-    try {
-      const validationResult = SaleValidates.SaleId(req.params)
-      if (!validationResult.success) {
-        return handleValidationError({ res, error: validationResult.error })
-      }
-
-      const { id: saleId } = req.params
-      const { page = 1, pageSize = 10 } = req.query
-
-      const result = await SaleModel.getDetailsBySaleId(saleId, { page, limit: pageSize })
-
-      const pagination = getPagination({ page, limit: pageSize, total: result.total })
-
-      if (pagination.page > pagination.pageCount) {
-        return handlePageError({ res })
-      }
-
-      const transformedData = result.data.map(detail =>
-        transformSaleDetail(detail, parseInt(saleId))
-      )
-
-      return handleResponse({
-        res,
-        data: transformedData,
-        message: 'Sale details retrieved successfully',
-        pagination
-      })
-    } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
-    }
-  }
 }

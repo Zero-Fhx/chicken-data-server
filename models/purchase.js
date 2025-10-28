@@ -275,41 +275,4 @@ export const PurchaseModel = {
     }
   },
 
-  async getDetailsByPurchaseId (purchaseId, { page = 1, limit = 10 } = {}) {
-    try {
-      const [purchaseRows] = await pool.query(
-        'SELECT purchase_id FROM purchases WHERE purchase_id = ?',
-        [purchaseId]
-      )
-
-      if (purchaseRows.length === 0) {
-        throw new NotFoundError('Purchase not found')
-      }
-
-      const offset = (parseInt(page) - 1) * parseInt(limit)
-      const [detailRows] = await pool.query(`
-        SELECT 
-          pd.*,
-          i.name as ingredient_name,
-          i.unit as ingredient_unit
-        FROM purchase_details pd
-        LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
-        WHERE pd.purchase_id = ?
-        ORDER BY pd.purchase_detail_id
-        LIMIT ? OFFSET ?
-      `, [purchaseId, parseInt(limit), offset])
-
-      const [[{ total }]] = await pool.query(
-        'SELECT COUNT(*) AS total FROM purchase_details WHERE purchase_id = ?',
-        [purchaseId]
-      )
-
-      return { data: detailRows, total }
-    } catch (error) {
-      if (isCustomUserError(error)) {
-        throw error
-      }
-      throw new InternalServerError(error.message)
-    }
-  }
 }
