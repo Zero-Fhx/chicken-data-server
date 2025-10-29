@@ -36,10 +36,7 @@ pnpm start
 ### Configuración de PostgreSQL
 
 1. **Instalar PostgreSQL** en tu sistema si no lo tienes instalado
-2. **Crear la base de datos:**
-   ```sql
-   CREATE DATABASE chicken_data_db;
-   ```
+2. **Crear la base de datos:** Esta se encuentra en [database/schema.sql](database/schema.sql) y puedes ejecutarla usando una herramienta como `psql` o cualquier cliente de PostgreSQL.
 3. **Configurar la variable de entorno** `DATABASE_URL` en tu archivo `.env`:
    ```bash
    DATABASE_URL=postgresql://username:password@localhost:5432/chicken_data_db
