@@ -8,7 +8,7 @@ API REST para la gestión de datos de un restaurante. Permite administrar platil
 
 - Node.js (v18 o superior)
 - PostgreSQL (v13 o superior)
-- pnpm (v10.16.1 o superior)
+- npm (v10.9.4 o superior)
 
 ### Instalación
 
@@ -18,7 +18,7 @@ git clone <repository-url>
 cd chicken-data-server
 
 # Instalar dependencias
-pnpm install
+npm install
 
 # Configurar variables de entorno
 cp .env.example .env
@@ -27,10 +27,10 @@ cp .env.example .env
 # Ejemplo: DATABASE_URL=postgresql://username:password@localhost:5432/chicken_data_db
 
 # Iniciar el servidor en modo desarrollo
-pnpm dev
+npm run dev
 
 # O iniciar en modo producción
-pnpm start
+npm run start
 ```
 
 ### Configuración de PostgreSQL
