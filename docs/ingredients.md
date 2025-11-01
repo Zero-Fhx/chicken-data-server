@@ -32,11 +32,13 @@ Obtiene una lista paginada de todos los ingredientes.
 | `categoryId` | `number`  | No          | Filtrar por ID de categoría                                |
 | `status`     | `string`  | No          | Filtrar por estado (`Active` o `Inactive`)                 |
 | `lowStock`   | `boolean` | No          | Filtrar ingredientes con stock bajo (stock < minimumStock) |
+| `minStock`   | `number`  | No          | Filtrar ingredientes con stock mayor o igual al valor      |
+| `maxStock`   | `number`  | No          | Filtrar ingredientes con stock menor o igual al valor      |
 
 ### Ejemplo de Solicitud
 
 ```http
-GET /api/ingredients?page=1&pageSize=10&status=Active&lowStock=true
+GET /api/ingredients?page=1&pageSize=10&status=Active&minStock=50&maxStock=500
 ```
 
 ### Ejemplo de Respuesta
@@ -82,7 +84,8 @@ GET /api/ingredients?page=1&pageSize=10&status=Active&lowStock=true
     },
     "filters": {
       "status": "Active",
-      "lowStock": true
+      "minStock": 50,
+      "maxStock": 500
     }
   },
   "timestamp": "2025-10-20T19:28:47.212Z"
@@ -363,7 +366,12 @@ DELETE /api/ingredients/5
 - La información de la categoría se incluye como un objeto anidado `category` con `id` y `name`.
 - Si no se especifica un `categoryId` al crear un ingrediente, se asigna la categoría por defecto (ID: 1).
 - El stock se actualiza automáticamente al registrar compras de ingredientes.
-- El filtro `lowStock=true` permite identificar ingredientes que necesitan reabastecimiento.
+- **Filtros de stock**:
+  - El filtro `lowStock=true` permite identificar ingredientes que necesitan reabastecimiento (stock <= minimumStock).
+  - Los filtros `minStock` y `maxStock` permiten buscar ingredientes dentro de un rango específico de stock.
+  - Los filtros `minStock` y `maxStock` pueden usarse juntos o por separado.
+  - Ejemplo: `?minStock=50&maxStock=500` retorna ingredientes con stock entre 50 y 500 unidades.
+- Los campos numéricos `stock` y `minimumStock` se devuelven como números, no como strings.
 - Las unidades de medida son texto libre, se recomienda usar unidades estándar como `kg`, `L`, `g`, `ml`, `unidad`, etc.
 - **Los datos no se eliminan físicamente**: Al eliminar un ingrediente, se marca con `deleted_at` (soft delete) pero permanece en la base de datos para mantener el historial.
 - Los campos `createdAt`, `updatedAt` y `deleted_at` no se incluyen en las respuestas de la API.

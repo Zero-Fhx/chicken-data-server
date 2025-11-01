@@ -29,6 +29,16 @@ export const IngredientModel = {
         conditions.push('i.stock <= i.minimum_stock')
       }
 
+      if (filters.minStock !== undefined) {
+        conditions.push(`i.stock >= $${params.length + 1}`)
+        params.push(filters.minStock)
+      }
+
+      if (filters.maxStock !== undefined) {
+        conditions.push(`i.stock <= $${params.length + 1}`)
+        params.push(filters.maxStock)
+      }
+
       const whereClause = `WHERE ${conditions.join(' AND ')}`
 
       const countQuery = `
