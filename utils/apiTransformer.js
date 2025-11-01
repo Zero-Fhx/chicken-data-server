@@ -74,8 +74,8 @@ export const transformIngredient = (ingredient) => {
 
   if (unit) transformed.unit = unit
   if (status) transformed.status = status
-  if (stock !== undefined && stock !== null) transformed.stock = stock
-  if (minimumStock !== undefined && minimumStock !== null) transformed.minimumStock = minimumStock
+  if (stock !== undefined && stock !== null) transformed.stock = toNumber(stock)
+  if (minimumStock !== undefined && minimumStock !== null) transformed.minimumStock = toNumber(minimumStock)
 
   if ((ingredient.category_id || ingredient.ingredient_category_id) && (ingredient.category_name || ingredient.ingredient_category_name)) {
     transformed.category = {
