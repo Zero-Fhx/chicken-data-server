@@ -27,10 +27,19 @@ export class BadRequestError extends CustomError {
   }
 }
 
+export class InsufficientStockError extends CustomError {
+  constructor (message = 'Insufficient ingredients stock', details = []) {
+    super(message, 400)
+    this.name = 'InsufficientStockError'
+    this.details = details
+  }
+}
+
 // No include InternalServerError
 const ERROR_TYPES = {
   NotFoundError,
-  BadRequestError
+  BadRequestError,
+  InsufficientStockError
 }
 
 export const isCustomUserError = (error) => {

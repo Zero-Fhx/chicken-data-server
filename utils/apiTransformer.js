@@ -29,6 +29,19 @@ export const transformDish = (dish) => {
     }
   }
 
+  // Agregar información de stock si existe
+  if (dish.stockInfo) {
+    transformed.stockInfo = {
+      hasIngredients: dish.stockInfo.hasIngredients,
+      hasSufficientStock: dish.stockInfo.hasSufficientStock
+    }
+
+    // Solo incluir ingredientes insuficientes si hay alguno
+    if (dish.stockInfo.insufficientIngredients && dish.stockInfo.insufficientIngredients.length > 0) {
+      transformed.stockInfo.insufficientIngredients = dish.stockInfo.insufficientIngredients
+    }
+  }
+
   return transformed
 }
 

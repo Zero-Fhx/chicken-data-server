@@ -155,10 +155,10 @@ export const PurchaseModel = {
   },
 
   async create (purchaseData) {
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
       const { supplier_id: supplierId, purchase_date: purchaseDate, notes, details } = purchaseData
 
@@ -166,41 +166,41 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase must have at least one detail item')
       }
 
-      const [purchaseResult] = await connection.query(
-        'INSERT INTO purchases (supplier_id, purchase_date, notes) VALUES (?, ?, ?)',
+      const { rows: [purchase] } = await client.query(
+        'INSERT INTO purchases (supplier_id, purchase_date, notes) VALUES ($1, $2, $3) RETURNING purchase_id',
         [supplierId, purchaseDate, notes]
       )
 
-      const purchaseId = purchaseResult.insertId
+      const purchaseId = purchase.purchase_id
 
       for (const detail of details) {
         const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
 
-        await connection.query(
-          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
+        await client.query(
+          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',
           [purchaseId, ingredientId, quantity, unitPrice]
         )
       }
 
-      await connection.commit()
+      await client.query('COMMIT')
 
       return await this.getById(purchaseId)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   },
 
   async update (id, purchaseData) {
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
       const originalPurchase = await this.getById(id)
       if (!originalPurchase) {
@@ -209,41 +209,41 @@ export const PurchaseModel = {
 
       const { supplier_id: supplierId, purchase_date: purchaseDate, notes, details } = purchaseData
 
-      await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
+      await client.query('DELETE FROM purchase_details WHERE purchase_id = $1', [id])
 
-      await connection.query(
-        'UPDATE purchases SET supplier_id = ?, purchase_date = ?, notes = ? WHERE purchase_id = ?',
+      await client.query(
+        'UPDATE purchases SET supplier_id = $1, purchase_date = $2, notes = $3 WHERE purchase_id = $4',
         [supplierId, purchaseDate, notes, id]
       )
 
       for (const detail of details) {
         const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
 
-        await connection.query(
-          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
+        await client.query(
+          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',
           [id, ingredientId, quantity, unitPrice]
         )
       }
 
-      await connection.commit()
+      await client.query('COMMIT')
 
       return await this.getById(id)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   },
 
   async delete (id) {
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
       const purchaseToDelete = await this.getById(id)
       if (!purchaseToDelete) {
@@ -254,24 +254,24 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase is already cancelled')
       }
 
-      await connection.query('DELETE FROM purchase_details WHERE purchase_id = ?', [id])
+      await client.query('DELETE FROM purchase_details WHERE purchase_id = $1', [id])
 
-      await connection.query(
-        'UPDATE purchases SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = ?',
+      await client.query(
+        'UPDATE purchases SET status = $1, deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = $2',
         ['Cancelled', id]
       )
 
-      await connection.commit()
+      await client.query('COMMIT')
 
       return await this.getById(id)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   },
 

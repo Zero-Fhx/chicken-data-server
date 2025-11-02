@@ -2,7 +2,7 @@ import pool from '../config/database.js'
 import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
 
 export const DishModel = {
-  async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
+  async getAll ({ page = 1, limit = 10, filters = {}, checkStock = false } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
 
@@ -55,13 +55,21 @@ export const DishModel = {
       `
       const { rows: dishRows } = await pool.query(dataQuery, [...params, parseInt(limit), offset])
 
+      // Si checkStock está activado, agregar información de stock a cada plato
+      if (checkStock) {
+        for (const dish of dishRows) {
+          const stockInfo = await this.checkDishIngredientsStock(dish.dish_id, 1)
+          dish.stockInfo = stockInfo
+        }
+      }
+
       return { data: dishRows, total }
     } catch (error) {
       throw new InternalServerError(error.message)
     }
   },
 
-  async getById (id) {
+  async getById (id, { checkStock = false } = {}) {
     try {
       const { rows: dishRows } = await pool.query(
         `SELECT d.*, dc.name as category_name 
@@ -73,7 +81,16 @@ export const DishModel = {
       if (dishRows.length === 0) {
         throw new NotFoundError('Dish not found')
       }
-      return dishRows[0]
+
+      const dish = dishRows[0]
+
+      // Si checkStock está activado, agregar información de stock
+      if (checkStock) {
+        const stockInfo = await this.checkDishIngredientsStock(dish.dish_id, 1)
+        dish.stockInfo = stockInfo
+      }
+
+      return dish
     } catch (error) {
       if (isCustomUserError(error)) {
         throw error
@@ -158,6 +175,62 @@ export const DishModel = {
       if (isCustomUserError(error)) {
         throw error
       }
+      throw new InternalServerError(error.message)
+    }
+  },
+
+  async checkDishIngredientsStock (dishId, quantity = 1) {
+    try {
+      // Obtener ingredientes del plato con su stock actual
+      const { rows: ingredients } = await pool.query(`
+        SELECT 
+          di.ingredient_id,
+          i.name as ingredient_name,
+          di.quantity_used,
+          i.stock as available_stock,
+          i.unit
+        FROM dish_ingredients di
+        INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
+        WHERE di.dish_id = $1 AND i.deleted_at IS NULL
+      `, [dishId])
+
+      // Si el plato no tiene ingredientes configurados
+      if (ingredients.length === 0) {
+        return {
+          hasIngredients: false,
+          hasSufficientStock: true, // Asumimos que si no tiene ingredientes, se puede vender
+          insufficientIngredients: []
+        }
+      }
+
+      // Verificar stock de cada ingrediente
+      const insufficientIngredients = []
+      let hasSufficientStock = true
+
+      for (const ing of ingredients) {
+        const requiredQuantity = parseFloat(ing.quantity_used) * quantity
+        const availableStock = parseFloat(ing.available_stock)
+        const isSufficient = availableStock >= requiredQuantity
+
+        if (!isSufficient) {
+          hasSufficientStock = false
+          insufficientIngredients.push({
+            ingredientId: ing.ingredient_id,
+            name: ing.ingredient_name,
+            required: requiredQuantity,
+            available: availableStock,
+            shortfall: requiredQuantity - availableStock,
+            unit: ing.unit
+          })
+        }
+      }
+
+      return {
+        hasIngredients: true,
+        hasSufficientStock,
+        insufficientIngredients
+      }
+    } catch (error) {
       throw new InternalServerError(error.message)
     }
   },

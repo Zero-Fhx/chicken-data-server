@@ -213,13 +213,14 @@ Crea una nueva venta en el sistema.
 
 ### Cuerpo de la Solicitud
 
-| Campo      | Tipo     | Obligatorio | Descripción                                                          |
-| ---------- | -------- | ----------- | -------------------------------------------------------------------- |
-| `saleDate` | `string` | No          | Fecha de la venta (formato: `YYYY-MM-DD`, por defecto: fecha actual) |
-| `customer` | `string` | No          | Nombre del cliente                                                   |
-| `notes`    | `string` | No          | Notas o comentarios adicionales                                      |
-| `status`   | `string` | No          | Estado: `Completed` o `Cancelled` (por defecto: `Completed`)         |
-| `details`  | `array`  | Sí          | Array de detalles de platillos (mínimo 1 elemento)                   |
+| Campo       | Tipo      | Obligatorio | Descripción                                                           |
+| ----------- | --------- | ----------- | --------------------------------------------------------------------- |
+| `saleDate`  | `string`  | No          | Fecha de la venta (formato: `YYYY-MM-DD`, por defecto: fecha actual)  |
+| `customer`  | `string`  | No          | Nombre del cliente                                                    |
+| `notes`     | `string`  | No          | Notas o comentarios adicionales                                       |
+| `status`    | `string`  | No          | Estado: `Completed` o `Cancelled` (por defecto: `Completed`)          |
+| `forceSale` | `boolean` | No          | Forzar venta sin validar stock de ingredientes (por defecto: `false`) |
+| `details`   | `array`   | Sí          | Array de detalles de platillos (mínimo 1 elemento)                    |
 
 #### Estructura de `details`
 
@@ -238,11 +239,17 @@ Crea una nueva venta en el sistema.
 | `customer`             | Opcional, puede ser `null`                           |
 | `notes`                | Opcional, puede ser `null`                           |
 | `status`               | Opcional, debe ser `Completed` o `Cancelled`         |
+| `forceSale`            | Opcional, debe ser un booleano                       |
 | `details`              | Requerido, debe ser un array con al menos 1 elemento |
 | `details[].dish_id`    | Requerido, debe ser un número entero positivo válido |
 | `details[].quantity`   | Requerido, debe ser un número entero >= 1            |
 | `details[].unit_price` | Requerido, debe ser un número >= 0                   |
 | `details[].discount`   | Opcional, debe ser un número >= 0                    |
+
+**Nota sobre `forceSale`**:
+
+- Si `forceSale = false` (por defecto): Se valida que haya stock suficiente de todos los ingredientes antes de procesar la venta
+- Si `forceSale = true`: Se omite la validación de stock y se procesa la venta de todas formas. Los ingredientes se descontarán normalmente, y si alguno queda con stock negativo, se establecerá en 0
 
 ### Ejemplo de Solicitud
 
@@ -316,10 +323,68 @@ Content-Type: application/json
 }
 ```
 
+### Ejemplo de Solicitud con `forceSale`
+
+```http
+POST /api/sales
+Content-Type: application/json
+
+{
+  "saleDate": "2025-10-20",
+  "customer": "María López",
+  "forceSale": true,
+  "details": [
+    {
+      "dish_id": 2,
+      "quantity": 5,
+      "unit_price": 18.00,
+      "discount": 0.00
+    }
+  ]
+}
+```
+
+### Ejemplo de Error: Stock Insuficiente
+
+Cuando `forceSale = false` y no hay stock suficiente de ingredientes:
+
+```json
+{
+  "success": false,
+  "message": "Insufficient ingredients stock for sale",
+  "data": [
+    {
+      "dishId": 2,
+      "dishName": "Arroz con Pollo",
+      "quantity": 5,
+      "insufficientIngredients": [
+        {
+          "ingredientId": 5,
+          "name": "Arroz",
+          "required": 2.5,
+          "available": 1.0,
+          "shortfall": 1.5,
+          "unit": "kg"
+        },
+        {
+          "ingredientId": 3,
+          "name": "Pollo",
+          "required": 5.0,
+          "available": 2.0,
+          "shortfall": 3.0,
+          "unit": "kg"
+        }
+      ]
+    }
+  ],
+  "timestamp": "2025-10-20T19:28:47.212Z"
+}
+```
+
 ### Códigos de Estado
 
 - `201` - Venta creada exitosamente
-- `400` - Datos de entrada inválidos
+- `400` - Datos de entrada inválidos o stock insuficiente
 - `404` - Platillo no encontrado
 
 ---
@@ -481,6 +546,19 @@ DELETE /api/sales/10
 - Se requiere al menos un platillo en los detalles para crear una venta.
 - Los descuentos se aplican por cada línea de detalle, no sobre el total.
 - El campo `discount` representa un monto fijo, no un porcentaje.
+
+### Sistema de Validación de Stock
+
+- **Validación automática**: Por defecto, al crear una venta se valida que haya stock suficiente de todos los ingredientes necesarios para los platillos solicitados.
+- **Platos sin ingredientes**: Los platos que no tienen ingredientes configurados en el sistema pueden venderse sin restricciones de stock.
+- **Descuento automático de stock**: Cuando se crea una venta, los triggers de la base de datos descuentan automáticamente el stock de los ingredientes utilizados.
+- **Parámetro `forceSale`**:
+  - `false` (por defecto): Valida stock antes de procesar la venta. Si no hay suficientes ingredientes, retorna error 400 con detalles de qué falta.
+  - `true`: Omite la validación y procesa la venta de todas formas. Los ingredientes se descontarán normalmente, y si alguno queda con stock negativo, se corregirá automáticamente a 0.
+- **Casos de uso de `forceSale`**: Útil cuando se necesita procesar una venta urgente y se sabe que habrá reabastecimiento pronto, o cuando se usa un método de preparación alternativo.
+
+### Otros
+
 - **Los datos no se eliminan físicamente**: Al eliminar una venta, se marca con `deleted_at` (soft delete) pero permanece en la base de datos para mantener el historial.
 - Las ventas canceladas (`Cancelled`) se mantienen para fines de auditoría.
 - Los detalles de venta incluyen objetos completos de platillos con su información anidada.

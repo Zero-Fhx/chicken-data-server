@@ -24,20 +24,21 @@ Obtiene una lista paginada de todos los platillos.
 
 ### Parámetros de Consulta
 
-| Parámetro    | Tipo     | Obligatorio | Descripción                                |
-| ------------ | -------- | ----------- | ------------------------------------------ |
-| `page`       | `number` | No          | Número de página (por defecto: `1`)        |
-| `pageSize`   | `number` | No          | Elementos por página (por defecto: `10`)   |
-| `search`     | `string` | No          | Buscar por nombre o descripción            |
-| `categoryId` | `number` | No          | Filtrar por ID de categoría                |
-| `minPrice`   | `number` | No          | Precio mínimo del platillo                 |
-| `maxPrice`   | `number` | No          | Precio máximo del platillo                 |
-| `status`     | `string` | No          | Filtrar por estado (`Active` o `Inactive`) |
+| Parámetro    | Tipo      | Obligatorio | Descripción                                                         |
+| ------------ | --------- | ----------- | ------------------------------------------------------------------- |
+| `page`       | `number`  | No          | Número de página (por defecto: `1`)                                 |
+| `pageSize`   | `number`  | No          | Elementos por página (por defecto: `10`)                            |
+| `search`     | `string`  | No          | Buscar por nombre o descripción                                     |
+| `categoryId` | `number`  | No          | Filtrar por ID de categoría                                         |
+| `minPrice`   | `number`  | No          | Precio mínimo del platillo                                          |
+| `maxPrice`   | `number`  | No          | Precio máximo del platillo                                          |
+| `status`     | `string`  | No          | Filtrar por estado (`Active` o `Inactive`)                          |
+| `checkStock` | `boolean` | No          | Incluir información de stock de ingredientes (por defecto: `false`) |
 
 ### Ejemplo de Solicitud
 
 ```http
-GET /api/dishes?page=1&pageSize=10&status=Active&minPrice=10&maxPrice=50
+GET /api/dishes?page=1&pageSize=10&status=Active&checkStock=true
 ```
 
 ### Ejemplo de Respuesta
@@ -56,6 +57,10 @@ GET /api/dishes?page=1&pageSize=10&status=Active&minPrice=10&maxPrice=50
       "category": {
         "id": 1,
         "name": "Platos Principales"
+      },
+      "stockInfo": {
+        "hasIngredients": true,
+        "hasSufficientStock": true
       }
     },
     {
@@ -67,6 +72,20 @@ GET /api/dishes?page=1&pageSize=10&status=Active&minPrice=10&maxPrice=50
       "category": {
         "id": 1,
         "name": "Platos Principales"
+      },
+      "stockInfo": {
+        "hasIngredients": true,
+        "hasSufficientStock": false,
+        "insufficientIngredients": [
+          {
+            "ingredientId": 5,
+            "name": "Arroz",
+            "required": 0.5,
+            "available": 0.2,
+            "shortfall": 0.3,
+            "unit": "kg"
+          }
+        ]
       }
     }
   ],
@@ -77,12 +96,16 @@ GET /api/dishes?page=1&pageSize=10&status=Active&minPrice=10&maxPrice=50
     "total": 2
   },
   "filters": {
-    "status": "Active",
-    "minPrice": 10,
-    "maxPrice": 50
+    "status": "Active"
   }
 }
 ```
+
+**Nota**: El campo `stockInfo` solo se incluye cuando se usa el parámetro `checkStock=true`. Contiene:
+
+- `hasIngredients`: Indica si el plato tiene ingredientes configurados
+- `hasSufficientStock`: Indica si hay stock suficiente para preparar el plato
+- `insufficientIngredients`: Lista de ingredientes que no tienen stock suficiente (solo si `hasSufficientStock` es `false`)
 
 ---
 
@@ -96,10 +119,16 @@ Obtiene un platillo específico por su ID.
 | --------- | -------- | ----------- | --------------- |
 | `id`      | `number` | Sí          | ID del platillo |
 
+### Parámetros de Consulta
+
+| Parámetro    | Tipo      | Obligatorio | Descripción                                                         |
+| ------------ | --------- | ----------- | ------------------------------------------------------------------- |
+| `checkStock` | `boolean` | No          | Incluir información de stock de ingredientes (por defecto: `false`) |
+
 ### Ejemplo de Solicitud
 
 ```http
-GET /api/dishes/1
+GET /api/dishes/1?checkStock=true
 ```
 
 ### Ejemplo de Respuesta

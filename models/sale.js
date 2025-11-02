@@ -1,5 +1,5 @@
 import pool from '../config/database.js'
-import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
+import { BadRequestError, InsufficientStockError, InternalServerError, isCustomUserError, NotFoundError } from '../utils/errors.js'
 
 export const SaleModel = {
   async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
@@ -116,55 +116,75 @@ export const SaleModel = {
     }
   },
 
-  async create (saleData) {
-    const connection = await pool.getConnection()
+  async create (saleData, options = { forceSale: false }) {
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
       const { sale_date: saleDate, customer, notes, details } = saleData
+      const { forceSale } = options
 
       if (!details || !Array.isArray(details) || details.length === 0) {
         throw new BadRequestError('Sale must have at least one detail item')
       }
 
-      const [saleResult] = await connection.query(
-        'INSERT INTO sales (sale_date, customer, notes) VALUES (?, ?, ?)',
+      // VALIDAR STOCK si forceSale es false
+      if (!forceSale) {
+        const stockValidation = await this.validateIngredientsStock(details)
+
+        if (!stockValidation.isValid) {
+          throw new InsufficientStockError(
+            'Insufficient ingredients stock for sale',
+            stockValidation.insufficientDishes
+          )
+        }
+      }
+
+      // Insertar venta
+      const { rows: [sale] } = await client.query(
+        'INSERT INTO sales (sale_date, customer, notes) VALUES ($1, $2, $3) RETURNING sale_id',
         [saleDate, customer || '', notes]
       )
 
-      const saleId = saleResult.insertId
+      const saleId = sale.sale_id
 
+      // Insertar detalles de venta
       for (const detail of details) {
         const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
 
-        await connection.query(
-          'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES (?, ?, ?, ?, ?)',
+        await client.query(
+          'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES ($1, $2, $3, $4, $5)',
           [saleId, dishId, quantity, unitPrice, discount]
         )
       }
 
-      await connection.commit()
+      await client.query('COMMIT')
+
+      // Si forceSale está activo, corregir stocks negativos después del commit
+      if (forceSale) {
+        await this.fixNegativeStock(client)
+      }
 
       return await this.getById(saleId)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   },
 
   async update (id, saleData) {
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
-      const [existingSale] = await connection.query('SELECT * FROM sales WHERE sale_id = ?', [id])
+      const { rows: existingSale } = await client.query('SELECT * FROM sales WHERE sale_id = $1', [id])
       if (existingSale.length === 0) {
         throw new NotFoundError('Sale not found')
       }
@@ -176,68 +196,69 @@ export const SaleModel = {
           throw new BadRequestError('Sale must have at least one detail item')
         }
 
-        await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
+        await client.query('DELETE FROM sale_details WHERE sale_id = $1', [id])
 
-        await connection.query(
-          'UPDATE sales SET sale_date = ?, customer = ?, notes = ? WHERE sale_id = ?',
+        await client.query(
+          'UPDATE sales SET sale_date = $1, customer = $2, notes = $3 WHERE sale_id = $4',
           [saleDate, customer || '', notes, id]
         )
 
         for (const detail of details) {
           const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
 
-          await connection.query(
-            'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES (?, ?, ?, ?, ?)',
+          await client.query(
+            'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES ($1, $2, $3, $4, $5)',
             [id, dishId, quantity, unitPrice, discount]
           )
         }
       } else {
         const fields = []
         const values = []
+        let paramCount = 1
 
         if (saleDate !== undefined) {
-          fields.push('sale_date = ?')
+          fields.push(`sale_date = $${paramCount++}`)
           values.push(saleDate)
         }
         if (customer !== undefined) {
-          fields.push('customer = ?')
+          fields.push(`customer = $${paramCount++}`)
           values.push(customer || '')
         }
         if (notes !== undefined) {
-          fields.push('notes = ?')
+          fields.push(`notes = $${paramCount++}`)
           values.push(notes)
         }
 
         if (fields.length > 0) {
           values.push(id)
-          await connection.query(
-            `UPDATE sales SET ${fields.join(', ')} WHERE sale_id = ?`,
+          await client.query(
+            `UPDATE sales SET ${fields.join(', ')} WHERE sale_id = $${paramCount}`,
             values
           )
         }
       }
 
-      await connection.commit()
+      await client.query('COMMIT')
 
       return await this.getById(id)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   },
 
   async delete (id) {
-    const connection = await pool.getConnection()
+    const client = await pool.connect()
 
     try {
-      await connection.beginTransaction()
+      await client.query('BEGIN')
 
-      const [checkRows] = await connection.query('SELECT * FROM sales WHERE sale_id = ?', [id])
+      const { rows: checkRows } = await client.query('SELECT * FROM sales WHERE sale_id = $1', [id])
       if (checkRows.length === 0) {
         throw new NotFoundError('Sale not found')
       }
@@ -248,25 +269,108 @@ export const SaleModel = {
         throw new BadRequestError('Sale is already cancelled')
       }
 
-      await connection.query('DELETE FROM sale_details WHERE sale_id = ?', [id])
+      await client.query('DELETE FROM sale_details WHERE sale_id = $1', [id])
 
-      await connection.query(
-        'UPDATE sales SET status = ?, deleted_at = CURRENT_TIMESTAMP WHERE sale_id = ?',
+      await client.query(
+        'UPDATE sales SET status = $1, deleted_at = CURRENT_TIMESTAMP WHERE sale_id = $2',
         ['Cancelled', id]
       )
 
-      await connection.commit()
+      await client.query('COMMIT')
 
       return await this.getById(id)
     } catch (error) {
-      await connection.rollback()
+      await client.query('ROLLBACK')
       if (isCustomUserError(error)) {
         throw error
       }
       throw new InternalServerError(error.message)
     } finally {
-      connection.release()
+      client.release()
     }
   },
+
+  async validateIngredientsStock (details) {
+    try {
+      const insufficientDishes = []
+
+      for (const detail of details) {
+        const { dish_id: dishId, quantity } = detail
+
+        // Obtener ingredientes del plato con stock actual
+        const { rows: ingredients } = await pool.query(`
+          SELECT 
+            di.ingredient_id,
+            i.name as ingredient_name,
+            di.quantity_used,
+            i.stock as available_stock,
+            i.unit
+          FROM dish_ingredients di
+          INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
+          WHERE di.dish_id = $1 AND i.deleted_at IS NULL
+        `, [dishId])
+
+        // Si el plato no tiene ingredientes, se puede vender sin problema
+        if (ingredients.length === 0) {
+          continue
+        }
+
+        // Verificar stock de cada ingrediente
+        const insufficientIngredients = []
+
+        for (const ing of ingredients) {
+          const requiredQuantity = parseFloat(ing.quantity_used) * quantity
+          const availableStock = parseFloat(ing.available_stock)
+
+          if (availableStock < requiredQuantity) {
+            insufficientIngredients.push({
+              ingredientId: ing.ingredient_id,
+              name: ing.ingredient_name,
+              required: requiredQuantity,
+              available: availableStock,
+              shortfall: requiredQuantity - availableStock,
+              unit: ing.unit
+            })
+          }
+        }
+
+        // Si hay ingredientes insuficientes, agregar el plato a la lista
+        if (insufficientIngredients.length > 0) {
+          // Obtener nombre del plato
+          const { rows: [dish] } = await pool.query(
+            'SELECT dish_id, name FROM dishes WHERE dish_id = $1',
+            [dishId]
+          )
+
+          insufficientDishes.push({
+            dishId,
+            dishName: dish ? dish.name : 'Unknown',
+            quantity,
+            insufficientIngredients
+          })
+        }
+      }
+
+      return {
+        isValid: insufficientDishes.length === 0,
+        insufficientDishes
+      }
+    } catch (error) {
+      throw new InternalServerError(error.message)
+    }
+  },
+
+  async fixNegativeStock (client) {
+    try {
+      // Corregir stocks negativos estableciéndolos en 0
+      await client.query(`
+        UPDATE ingredients 
+        SET stock = 0 
+        WHERE stock < 0
+      `)
+    } catch (error) {
+      throw new InternalServerError(error.message)
+    }
+  }
 
 }

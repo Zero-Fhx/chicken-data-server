@@ -1,5 +1,6 @@
 import { SaleModel } from '../models/sale.js'
 import { transformSale } from '../utils/apiTransformer.js'
+import { InsufficientStockError } from '../utils/errors.js'
 import { getPagination } from '../utils/pagination.js'
 import { handleError, handlePageError, handleResponse, handleValidationError } from '../utils/responseHandler.js'
 import { SaleValidates } from '../utils/validates.js'
@@ -62,7 +63,9 @@ export const SalesController = {
         return handleValidationError({ res, error: validationResult.error })
       }
 
-      const sale = await SaleModel.create(req.body)
+      const { forceSale = false, ...saleData } = req.body
+
+      const sale = await SaleModel.create(saleData, { forceSale })
 
       const transformedData = transformSale(sale)
 
@@ -73,6 +76,16 @@ export const SalesController = {
         message: 'Sale created successfully'
       })
     } catch (error) {
+      // Manejo especial para error de stock insuficiente
+      if (error instanceof InsufficientStockError) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          data: error.details,
+          timestamp: new Date().toISOString()
+        })
+      }
+
       return handleError({ res, status: error.statusCode || 500, error })
     }
   },
