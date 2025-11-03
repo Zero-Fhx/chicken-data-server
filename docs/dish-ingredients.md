@@ -8,17 +8,17 @@ Este recurso permite administrar la relación entre platillos e ingredientes, es
 
 ## Endpoints Disponibles
 
-| Método   | Endpoint                                        | Descripción                               |
-| -------- | ----------------------------------------------- | ----------------------------------------- |
-| `GET`    | `/api/dishes/:dishId/ingredients`               | Obtener la receta completa de un platillo |
-| `POST`   | `/api/dishes/:dishId/ingredients`               | Agregar un ingrediente a la receta        |
-| `PUT`    | `/api/dishes/:dishId/ingredients`               | Reemplazar toda la receta del platillo    |
-| `PUT`    | `/api/dishes/:dishId/ingredients/:ingredientId` | Actualizar cantidad de un ingrediente     |
-| `DELETE` | `/api/dishes/:dishId/ingredients/:ingredientId` | Eliminar un ingrediente de la receta      |
+| Método   | Endpoint                                    | Descripción                               |
+| -------- | ------------------------------------------- | ----------------------------------------- |
+| `GET`    | `/api/dishes/:dishId/recipe`                | Obtener la receta completa de un platillo |
+| `POST`   | `/api/dishes/:dishId/recipe`                | Agregar un ingrediente a la receta        |
+| `PUT`    | `/api/dishes/:dishId/recipe`                | Reemplazar toda la receta del platillo    |
+| `PATCH`  | `/api/dishes/:dishId/recipe/:ingredientId`  | Actualizar cantidad de un ingrediente     |
+| `DELETE` | `/api/dishes/:dishId/recipe/:ingredientId`  | Eliminar un ingrediente de la receta      |
 
 ---
 
-## GET /api/dishes/:dishId/ingredients
+## GET /api/dishes/:dishId/recipe
 
 Obtiene la receta completa de un platillo, incluyendo todos los ingredientes y cantidades necesarias.
 
@@ -31,7 +31,7 @@ Obtiene la receta completa de un platillo, incluyendo todos los ingredientes y c
 ### Ejemplo de Solicitud
 
 ```http
-GET /api/dishes/1/ingredients
+GET /api/dishes/1/recipe
 ```
 
 ### Ejemplo de Respuesta
@@ -87,7 +87,7 @@ GET /api/dishes/1/ingredients
 
 ---
 
-## POST /api/dishes/:dishId/ingredients
+## POST /api/dishes/:dishId/recipe
 
 Agrega un nuevo ingrediente a la receta de un platillo.
 
@@ -114,7 +114,7 @@ Agrega un nuevo ingrediente a la receta de un platillo.
 ### Ejemplo de Solicitud
 
 ```http
-POST /api/dishes/1/ingredients
+POST /api/dishes/1/recipe
 Content-Type: application/json
 
 {
@@ -151,7 +151,7 @@ Content-Type: application/json
 
 ---
 
-## PUT /api/dishes/:dishId/ingredients
+## PUT /api/dishes/:dishId/recipe
 
 Reemplaza completamente la receta de un platillo con una nueva lista de ingredientes.
 
@@ -185,7 +185,7 @@ Reemplaza completamente la receta de un platillo con una nueva lista de ingredie
 ### Ejemplo de Solicitud
 
 ```http
-PUT /api/dishes/1/ingredients
+PUT /api/dishes/1/recipe
 Content-Type: application/json
 
 {
@@ -270,7 +270,7 @@ Content-Type: application/json
 
 ---
 
-## PUT /api/dishes/:dishId/ingredients/:ingredientId
+## PATCH /api/dishes/:dishId/recipe/:ingredientId
 
 Actualiza la cantidad necesaria de un ingrediente específico en la receta.
 
@@ -296,7 +296,7 @@ Actualiza la cantidad necesaria de un ingrediente específico en la receta.
 ### Ejemplo de Solicitud
 
 ```http
-PUT /api/dishes/1/ingredients/5
+PATCH /api/dishes/1/recipe/5
 Content-Type: application/json
 
 {
@@ -332,7 +332,7 @@ Content-Type: application/json
 
 ---
 
-## DELETE /api/dishes/:dishId/ingredients/:ingredientId
+## DELETE /api/dishes/:dishId/recipe/:ingredientId
 
 Elimina un ingrediente de la receta de un platillo.
 
@@ -346,7 +346,7 @@ Elimina un ingrediente de la receta de un platillo.
 ### Ejemplo de Solicitud
 
 ```http
-DELETE /api/dishes/1/ingredients/12
+DELETE /api/dishes/1/recipe/12
 ```
 
 ### Ejemplo de Respuesta
