@@ -1,26 +1,26 @@
 import z from 'zod'
 
 const purchaseDetailSchema = z.object({
-  ingredient_id: z.coerce
+  ingredientId: z.coerce
     .number({ error: 'Ingredient ID must be a number' })
     .int({ error: 'Ingredient ID must be an integer' })
     .min(1, { error: 'Ingredient ID must be a positive number' }),
   quantity: z.coerce
     .number({ error: 'Quantity must be a number' })
     .min(0.01, { error: 'Quantity must be greater than 0' }),
-  unit_price: z.coerce
+  unitPrice: z.coerce
     .number({ error: 'Unit price must be a number' })
     .min(0, { error: 'Unit price must be a positive number' }),
 })
 
 const purchaseSchema = z.object({
-  supplier_id: z.coerce
+  supplierId: z.coerce
     .number({ error: 'Supplier ID must be a number' })
     .int({ error: 'Supplier ID must be an integer' })
     .min(1, { error: 'Supplier ID must be a positive number' })
     .optional()
     .nullable(),
-  purchase_date: z
+  purchaseDate: z
     .iso.date('Purchase date must be in YYYY-MM-DD format')
     .optional(),
   notes: z
@@ -36,13 +36,13 @@ const purchaseSchema = z.object({
 })
 
 const partialPurchaseSchema = z.object({
-  supplier_id: z.coerce
+  supplierId: z.coerce
     .number({ error: 'Supplier ID must be a number' })
     .int({ error: 'Supplier ID must be an integer' })
     .min(1, { error: 'Supplier ID must be a positive number' })
     .optional()
     .nullable(),
-  purchase_date: z
+  purchaseDate: z
     .iso.date({ error: 'Purchase date must be in YYYY-MM-DD format' })
     .optional(),
   notes: z

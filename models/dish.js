@@ -55,7 +55,6 @@ export const DishModel = {
       `
       const { rows: dishRows } = await pool.query(dataQuery, [...params, parseInt(limit), offset])
 
-      // Si checkStock está activado, agregar información de stock a cada plato
       if (checkStock) {
         for (const dish of dishRows) {
           const stockInfo = await this.checkDishIngredientsStock(dish.dish_id, 1)
@@ -84,7 +83,6 @@ export const DishModel = {
 
       const dish = dishRows[0]
 
-      // Si checkStock está activado, agregar información de stock
       if (checkStock) {
         const stockInfo = await this.checkDishIngredientsStock(dish.dish_id, 1)
         dish.stockInfo = stockInfo
@@ -181,7 +179,6 @@ export const DishModel = {
 
   async checkDishIngredientsStock (dishId, quantity = 1) {
     try {
-      // Obtener ingredientes del plato con su stock actual
       const { rows: ingredients } = await pool.query(`
         SELECT 
           di.ingredient_id,
@@ -194,16 +191,14 @@ export const DishModel = {
         WHERE di.dish_id = $1 AND i.deleted_at IS NULL
       `, [dishId])
 
-      // Si el plato no tiene ingredientes configurados
       if (ingredients.length === 0) {
         return {
           hasIngredients: false,
-          hasSufficientStock: true, // Asumimos que si no tiene ingredientes, se puede vender
+          hasSufficientStock: true,
           insufficientIngredients: []
         }
       }
 
-      // Verificar stock de cada ingrediente
       const insufficientIngredients = []
       let hasSufficientStock = true
 

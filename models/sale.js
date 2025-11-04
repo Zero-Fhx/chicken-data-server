@@ -122,14 +122,13 @@ export const SaleModel = {
     try {
       await client.query('BEGIN')
 
-      const { sale_date: saleDate, customer, notes, details } = saleData
+      const { saleDate, customer, notes, details } = saleData
       const { forceSale } = options
 
       if (!details || !Array.isArray(details) || details.length === 0) {
         throw new BadRequestError('Sale must have at least one detail item')
       }
 
-      // VALIDAR STOCK si forceSale es false
       if (!forceSale) {
         const stockValidation = await this.validateIngredientsStock(details)
 
@@ -141,7 +140,6 @@ export const SaleModel = {
         }
       }
 
-      // Insertar venta
       const { rows: [sale] } = await client.query(
         'INSERT INTO sales (sale_date, customer, notes) VALUES ($1, $2, $3) RETURNING sale_id',
         [saleDate, customer || '', notes]
@@ -149,9 +147,8 @@ export const SaleModel = {
 
       const saleId = sale.sale_id
 
-      // Insertar detalles de venta
       for (const detail of details) {
-        const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
+        const { dishId, quantity, unitPrice, discount = 0 } = detail
 
         await client.query(
           'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES ($1, $2, $3, $4, $5)',
@@ -161,7 +158,6 @@ export const SaleModel = {
 
       await client.query('COMMIT')
 
-      // Si forceSale está activo, corregir stocks negativos después del commit
       if (forceSale) {
         await this.fixNegativeStock(client)
       }
@@ -189,7 +185,7 @@ export const SaleModel = {
         throw new NotFoundError('Sale not found')
       }
 
-      const { sale_date: saleDate, customer, notes, details } = saleData
+      const { saleDate, customer, notes, details } = saleData
 
       if (details && Array.isArray(details)) {
         if (details.length === 0) {
@@ -204,7 +200,7 @@ export const SaleModel = {
         )
 
         for (const detail of details) {
-          const { dish_id: dishId, quantity, unit_price: unitPrice, discount = 0 } = detail
+          const { dishId, quantity, unitPrice, discount = 0 } = detail
 
           await client.query(
             'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES ($1, $2, $3, $4, $5)',
@@ -295,9 +291,8 @@ export const SaleModel = {
       const insufficientDishes = []
 
       for (const detail of details) {
-        const { dish_id: dishId, quantity } = detail
+        const { dishId, quantity } = detail
 
-        // Obtener ingredientes del plato con stock actual
         const { rows: ingredients } = await pool.query(`
           SELECT 
             di.ingredient_id,
@@ -310,12 +305,10 @@ export const SaleModel = {
           WHERE di.dish_id = $1 AND i.deleted_at IS NULL
         `, [dishId])
 
-        // Si el plato no tiene ingredientes, se puede vender sin problema
         if (ingredients.length === 0) {
           continue
         }
 
-        // Verificar stock de cada ingrediente
         const insufficientIngredients = []
 
         for (const ing of ingredients) {
@@ -334,9 +327,7 @@ export const SaleModel = {
           }
         }
 
-        // Si hay ingredientes insuficientes, agregar el plato a la lista
         if (insufficientIngredients.length > 0) {
-          // Obtener nombre del plato
           const { rows: [dish] } = await pool.query(
             'SELECT dish_id, name FROM dishes WHERE dish_id = $1',
             [dishId]
@@ -362,7 +353,6 @@ export const SaleModel = {
 
   async fixNegativeStock (client) {
     try {
-      // Corregir stocks negativos estableciéndolos en 0
       await client.query(`
         UPDATE ingredients 
         SET stock = 0 

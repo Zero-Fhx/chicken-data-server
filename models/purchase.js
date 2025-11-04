@@ -160,7 +160,7 @@ export const PurchaseModel = {
     try {
       await client.query('BEGIN')
 
-      const { supplier_id: supplierId, purchase_date: purchaseDate, notes, details } = purchaseData
+      const { supplierId, purchaseDate, notes, details } = purchaseData
 
       if (!details || !Array.isArray(details) || details.length === 0) {
         throw new BadRequestError('Purchase must have at least one detail item')
@@ -174,7 +174,7 @@ export const PurchaseModel = {
       const purchaseId = purchase.purchase_id
 
       for (const detail of details) {
-        const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
+        const { ingredientId, quantity, unitPrice } = detail
 
         await client.query(
           'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',
@@ -207,7 +207,7 @@ export const PurchaseModel = {
         throw new NotFoundError('Purchase not found')
       }
 
-      const { supplier_id: supplierId, purchase_date: purchaseDate, notes, details } = purchaseData
+      const { supplierId, purchaseDate, notes, details } = purchaseData
 
       await client.query('DELETE FROM purchase_details WHERE purchase_id = $1', [id])
 
@@ -217,7 +217,7 @@ export const PurchaseModel = {
       )
 
       for (const detail of details) {
-        const { ingredient_id: ingredientId, quantity, unit_price: unitPrice } = detail
+        const { ingredientId, quantity, unitPrice } = detail
 
         await client.query(
           'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',

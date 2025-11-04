@@ -1,14 +1,14 @@
 import z from 'zod'
 
 const saleDetailSchema = z.object({
-  dish_id: z.coerce
+  dishId: z.coerce
     .number({ error: 'Dish ID must be a number' })
     .int({ error: 'Dish ID must be an integer' })
     .min(1, { error: 'Dish ID must be a positive number' }),
   quantity: z.coerce
     .number({ error: 'Quantity must be a number' })
     .min(1, { error: 'Quantity must be at least 1' }),
-  unit_price: z.coerce
+  unitPrice: z.coerce
     .number({ error: 'Unit price must be a number' })
     .min(0, { error: 'Unit price must be a positive number' }),
   discount: z.coerce
@@ -19,7 +19,7 @@ const saleDetailSchema = z.object({
 })
 
 const saleSchema = z.object({
-  sale_date: z
+  saleDate: z
     .iso.date({ error: 'Sale date must be in YYYY-MM-DD format' })
     .optional(),
   customer: z
@@ -44,7 +44,7 @@ const saleSchema = z.object({
 })
 
 const partialSaleSchema = z.object({
-  sale_date: z
+  saleDate: z
     .iso.date({ error: 'Sale date must be in YYYY-MM-DD format' })
     .optional(),
   customer: z

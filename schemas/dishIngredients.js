@@ -1,17 +1,17 @@
 import z from 'zod'
 
 const dishIngredientSchema = z.object({
-  ingredient_id: z
+  ingredientId: z
     .number({ error: 'Ingredient ID is required' })
     .int({ error: 'Ingredient ID must be an integer' })
     .positive({ error: 'Ingredient ID must be a positive number' }),
-  quantity_used: z
+  quantityUsed: z
     .number({ error: 'Quantity used is required' })
     .positive({ error: 'Quantity used must be a positive number' })
 })
 
 const quantityUsedSchema = z.object({
-  quantity_used: z
+  quantityUsed: z
     .number({ error: 'Quantity used is required' })
     .positive({ error: 'Quantity used must be a positive number' })
 })
