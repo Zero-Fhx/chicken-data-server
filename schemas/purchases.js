@@ -53,10 +53,6 @@ const partialPurchaseSchema = z.object({
     .enum(['Completed', 'Cancelled'], { error: 'Status must be either Completed or Cancelled' })
     .optional()
     .default('Completed'),
-  details: z
-    .array(purchaseDetailSchema, { error: 'Details must be an array' })
-    .min(1, { error: 'Purchase must have at least one detail item' })
-    .optional(),
 })
 
 export function ValidatePurchase (data) {

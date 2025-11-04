@@ -185,53 +185,31 @@ export const SaleModel = {
         throw new NotFoundError('Sale not found')
       }
 
-      const { saleDate, customer, notes, details } = saleData
+      const { saleDate, customer, notes } = saleData
 
-      if (details && Array.isArray(details)) {
-        if (details.length === 0) {
-          throw new BadRequestError('Sale must have at least one detail item')
-        }
+      const fields = []
+      const values = []
+      let paramCount = 1
 
-        await client.query('DELETE FROM sale_details WHERE sale_id = $1', [id])
+      if (saleDate !== undefined) {
+        fields.push(`sale_date = $${paramCount++}`)
+        values.push(saleDate)
+      }
+      if (customer !== undefined) {
+        fields.push(`customer = $${paramCount++}`)
+        values.push(customer || '')
+      }
+      if (notes !== undefined) {
+        fields.push(`notes = $${paramCount++}`)
+        values.push(notes)
+      }
 
+      if (fields.length > 0) {
+        values.push(id)
         await client.query(
-          'UPDATE sales SET sale_date = $1, customer = $2, notes = $3 WHERE sale_id = $4',
-          [saleDate, customer || '', notes, id]
+          `UPDATE sales SET ${fields.join(', ')} WHERE sale_id = $${paramCount}`,
+          values
         )
-
-        for (const detail of details) {
-          const { dishId, quantity, unitPrice, discount = 0 } = detail
-
-          await client.query(
-            'INSERT INTO sale_details (sale_id, dish_id, quantity, unit_price, discount) VALUES ($1, $2, $3, $4, $5)',
-            [id, dishId, quantity, unitPrice, discount]
-          )
-        }
-      } else {
-        const fields = []
-        const values = []
-        let paramCount = 1
-
-        if (saleDate !== undefined) {
-          fields.push(`sale_date = $${paramCount++}`)
-          values.push(saleDate)
-        }
-        if (customer !== undefined) {
-          fields.push(`customer = $${paramCount++}`)
-          values.push(customer || '')
-        }
-        if (notes !== undefined) {
-          fields.push(`notes = $${paramCount++}`)
-          values.push(notes)
-        }
-
-        if (fields.length > 0) {
-          values.push(id)
-          await client.query(
-            `UPDATE sales SET ${fields.join(', ')} WHERE sale_id = $${paramCount}`,
-            values
-          )
-        }
       }
 
       await client.query('COMMIT')

@@ -207,21 +207,30 @@ export const PurchaseModel = {
         throw new NotFoundError('Purchase not found')
       }
 
-      const { supplierId, purchaseDate, notes, details } = purchaseData
+      const { supplierId, purchaseDate, notes } = purchaseData
 
-      await client.query('DELETE FROM purchase_details WHERE purchase_id = $1', [id])
+      const fields = []
+      const values = []
+      let paramCount = 1
 
-      await client.query(
-        'UPDATE purchases SET supplier_id = $1, purchase_date = $2, notes = $3 WHERE purchase_id = $4',
-        [supplierId, purchaseDate, notes, id]
-      )
+      if (supplierId !== undefined) {
+        fields.push(`supplier_id = $${paramCount++}`)
+        values.push(supplierId)
+      }
+      if (purchaseDate !== undefined) {
+        fields.push(`purchase_date = $${paramCount++}`)
+        values.push(purchaseDate)
+      }
+      if (notes !== undefined) {
+        fields.push(`notes = $${paramCount++}`)
+        values.push(notes)
+      }
 
-      for (const detail of details) {
-        const { ingredientId, quantity, unitPrice } = detail
-
+      if (fields.length > 0) {
+        values.push(id)
         await client.query(
-          'INSERT INTO purchase_details (purchase_id, ingredient_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',
-          [id, ingredientId, quantity, unitPrice]
+          `UPDATE purchases SET ${fields.join(', ')} WHERE purchase_id = $${paramCount}`,
+          values
         )
       }
 
