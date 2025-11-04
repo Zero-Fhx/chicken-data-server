@@ -74,7 +74,7 @@ export const DishIngredientsController = {
 
     try {
       const { dishId, ingredientId } = req.params
-      const { quantity_used: quantityUsed } = req.body
+      const { quantityUsed } = req.body
 
       const ingredient = await DishIngredientModel.updateQuantity(dishId, ingredientId, quantityUsed)
 

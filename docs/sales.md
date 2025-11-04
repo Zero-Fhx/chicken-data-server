@@ -8,20 +8,19 @@ Este recurso permite registrar y administrar las ventas de platillos del restaur
 
 ## Endpoints Disponibles
 
-| Método   | Endpoint                 | Descripción                   |
-| -------- | ------------------------ | ----------------------------- |
-| `GET`    | `/api/sales`             | Obtener todas las ventas      |
-| `GET`    | `/api/sales/:id`         | Obtener una venta por ID      |
-| `GET`    | `/api/sales/:id/details` | Obtener detalles de una venta |
-| `POST`   | `/api/sales`             | Crear una nueva venta         |
-| `PATCH`  | `/api/sales/:id`         | Actualizar una venta          |
-| `DELETE` | `/api/sales/:id`         | Eliminar una venta            |
+| Método   | Endpoint         | Descripción                           |
+| -------- | ---------------- | ------------------------------------- |
+| `GET`    | `/api/sales`     | Obtener todas las ventas con detalles |
+| `GET`    | `/api/sales/:id` | Obtener una venta por ID con detalles |
+| `POST`   | `/api/sales`     | Crear una nueva venta                 |
+| `PATCH`  | `/api/sales/:id` | Actualizar metadatos de una venta     |
+| `DELETE` | `/api/sales/:id` | Eliminar una venta                    |
 
 ---
 
 ## GET /api/sales
 
-Obtiene una lista paginada de todas las ventas.
+Obtiene una lista paginada de todas las ventas con sus detalles completos (platillos incluidos).
 
 ### Parámetros de Consulta
 
@@ -37,7 +36,7 @@ Obtiene una lista paginada de todas las ventas.
 ### Ejemplo de Solicitud
 
 ```http
-GET /api/sales?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endDate=2025-10-20
+GET /api/sales?page=1&pageSize=10&status=Completed
 ```
 
 ### Ejemplo de Respuesta
@@ -49,17 +48,55 @@ GET /api/sales?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endDate=
   "data": [
     {
       "id": 1,
-      "saleDate": "2025-10-15",
+      "saleDate": "2025-10-15T05:00:00.000Z",
       "customer": "Juan Pérez",
       "total": 75.5,
       "notes": "Mesa 5",
-      "status": "Completed"
+      "status": "Completed",
+      "details": [
+        {
+          "id": 1,
+          "quantity": 2,
+          "unitPrice": 25.5,
+          "discount": 0,
+          "subtotal": 51,
+          "dish": {
+            "id": 1,
+            "name": "Pollo a la Brasa",
+            "description": "Pollo marinado con especias especiales",
+            "price": 25.5,
+            "status": "Active",
+            "category": {
+              "id": 1,
+              "name": "Platos Principales"
+            }
+          }
+        },
+        {
+          "id": 2,
+          "quantity": 1,
+          "unitPrice": 18,
+          "discount": 0,
+          "subtotal": 18,
+          "dish": {
+            "id": 2,
+            "name": "Arroz con Pollo",
+            "description": "Arroz con pollo y vegetales",
+            "price": 18,
+            "status": "Active",
+            "category": {
+              "id": 1,
+              "name": "Platos Principales"
+            }
+          }
+        }
+      ]
     },
     {
       "id": 2,
-      "saleDate": "2025-10-15",
+      "saleDate": "2025-10-15T05:00:00.000Z",
       "customer": "María García",
-      "total": 50.0,
+      "total": 50,
       "notes": "Para llevar",
       "status": "Completed"
     }
@@ -72,11 +109,6 @@ GET /api/sales?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endDate=
       "total": 2,
       "hasNextPage": false,
       "hasPrevPage": false
-    },
-    "filters": {
-      "status": "Completed",
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-20"
     }
   },
   "timestamp": "2025-10-20T19:28:47.212Z"
@@ -87,7 +119,7 @@ GET /api/sales?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endDate=
 
 ## GET /api/sales/:id
 
-Obtiene una venta específica por su ID.
+Obtiene una venta específica por su ID con todos sus detalles (platillos incluidos).
 
 ### Parámetros de Ruta
 
@@ -109,49 +141,7 @@ GET /api/sales/1
   "message": "Sale retrieved successfully",
   "data": {
     "id": 1,
-    "saleDate": "2025-10-15",
-    "customer": "Juan Pérez",
-    "total": 75.5,
-    "notes": "Mesa 5",
-    "status": "Completed"
-  },
-  "timestamp": "2025-10-20T19:28:47.212Z"
-}
-```
-
-### Códigos de Estado
-
-- `200` - Venta encontrada exitosamente
-- `400` - ID inválido
-- `404` - Venta no encontrada
-
----
-
-## GET /api/sales/:id/details
-
-Obtiene los detalles completos de una venta, incluyendo todos los platillos vendidos.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción    |
-| --------- | -------- | ----------- | -------------- |
-| `id`      | `number` | Sí          | ID de la venta |
-
-### Ejemplo de Solicitud
-
-```http
-GET /api/sales/1/details
-```
-
-### Ejemplo de Respuesta
-
-```json
-{
-  "success": true,
-  "message": "Sale details retrieved successfully",
-  "data": {
-    "id": 1,
-    "saleDate": "2025-10-15",
+    "saleDate": "2025-10-15T05:00:00.000Z",
     "customer": "Juan Pérez",
     "total": 75.5,
     "notes": "Mesa 5",
@@ -159,38 +149,38 @@ GET /api/sales/1/details
     "details": [
       {
         "id": 1,
-        "saleId": 1,
         "quantity": 2,
         "unitPrice": 25.5,
-        "discount": 0.0,
-        "subtotal": 51.0,
+        "discount": 0,
+        "subtotal": 51,
         "dish": {
           "id": 1,
-          "name": "Pollo a la Brasa"
+          "name": "Pollo a la Brasa",
+          "description": "Pollo marinado con especias especiales",
+          "price": 25.5,
+          "status": "Active",
+          "category": {
+            "id": 1,
+            "name": "Platos Principales"
+          }
         }
       },
       {
         "id": 2,
-        "saleId": 1,
         "quantity": 1,
-        "unitPrice": 15.0,
-        "discount": 0.0,
-        "subtotal": 15.0,
+        "unitPrice": 24.5,
+        "discount": 0,
+        "subtotal": 24.5,
         "dish": {
           "id": 3,
-          "name": "Alitas Picantes"
-        }
-      },
-      {
-        "id": 3,
-        "saleId": 1,
-        "quantity": 3,
-        "unitPrice": 3.5,
-        "discount": 0.5,
-        "subtotal": 9.5,
-        "dish": {
-          "id": 5,
-          "name": "Gaseosa"
+          "name": "Ensalada César",
+          "description": "Lechuga romana con aderezo césar",
+          "price": 12,
+          "status": "Active",
+          "category": {
+            "id": 2,
+            "name": "Ensaladas"
+          }
         }
       }
     ]
@@ -201,7 +191,7 @@ GET /api/sales/1/details
 
 ### Códigos de Estado
 
-- `200` - Detalles de venta encontrados exitosamente
+- `200` - Venta encontrada exitosamente
 - `400` - ID inválido
 - `404` - Venta no encontrada
 
@@ -224,27 +214,27 @@ Crea una nueva venta en el sistema.
 
 #### Estructura de `details`
 
-| Campo        | Tipo     | Obligatorio | Descripción                           |
-| ------------ | -------- | ----------- | ------------------------------------- |
-| `dish_id`    | `number` | Sí          | ID del platillo vendido               |
-| `quantity`   | `number` | Sí          | Cantidad vendida (debe ser >= 1)      |
-| `unit_price` | `number` | Sí          | Precio unitario (debe ser >= 0)       |
-| `discount`   | `number` | No          | Descuento aplicado (por defecto: `0`) |
+| Campo       | Tipo     | Obligatorio | Descripción                           |
+| ----------- | -------- | ----------- | ------------------------------------- |
+| `dishId`    | `number` | Sí          | ID del platillo vendido               |
+| `quantity`  | `number` | Sí          | Cantidad vendida (debe ser >= 1)      |
+| `unitPrice` | `number` | Sí          | Precio unitario (debe ser >= 0)       |
+| `discount`  | `number` | No          | Descuento aplicado (por defecto: `0`) |
 
 ### Validaciones y Restricciones
 
-| Campo                  | Validación                                           |
-| ---------------------- | ---------------------------------------------------- |
-| `saleDate`             | Opcional, debe estar en formato `YYYY-MM-DD`         |
-| `customer`             | Opcional, puede ser `null`                           |
-| `notes`                | Opcional, puede ser `null`                           |
-| `status`               | Opcional, debe ser `Completed` o `Cancelled`         |
-| `forceSale`            | Opcional, debe ser un booleano                       |
-| `details`              | Requerido, debe ser un array con al menos 1 elemento |
-| `details[].dish_id`    | Requerido, debe ser un número entero positivo válido |
-| `details[].quantity`   | Requerido, debe ser un número entero >= 1            |
-| `details[].unit_price` | Requerido, debe ser un número >= 0                   |
-| `details[].discount`   | Opcional, debe ser un número >= 0                    |
+| Campo                 | Validación                                           |
+| --------------------- | ---------------------------------------------------- |
+| `saleDate`            | Opcional, debe estar en formato `YYYY-MM-DD`         |
+| `customer`            | Opcional, puede ser `null`                           |
+| `notes`               | Opcional, puede ser `null`                           |
+| `status`              | Opcional, debe ser `Completed` o `Cancelled`         |
+| `forceSale`           | Opcional, debe ser un booleano                       |
+| `details`             | Requerido, debe ser un array con al menos 1 elemento |
+| `details[].dishId`    | Requerido, debe ser un número entero positivo válido |
+| `details[].quantity`  | Requerido, debe ser un número entero >= 1            |
+| `details[].unitPrice` | Requerido, debe ser un número >= 0                   |
+| `details[].discount`  | Opcional, debe ser un número >= 0                    |
 
 **Nota sobre `forceSale`**:
 
@@ -264,15 +254,15 @@ Content-Type: application/json
   "status": "Completed",
   "details": [
     {
-      "dish_id": 1,
+      "dishId": 1,
       "quantity": 2,
-      "unit_price": 25.50,
+      "unitPrice": 25.50,
       "discount": 0.00
     },
     {
-      "dish_id": 3,
+      "dishId": 3,
       "quantity": 1,
-      "unit_price": 15.00,
+      "unitPrice": 15.00,
       "discount": 1.00
     }
   ]
@@ -391,7 +381,7 @@ Cuando `forceSale = false` y no hay stock suficiente de ingredientes:
 
 ## PATCH /api/sales/:id
 
-Actualiza una venta existente. Solo se actualizan los campos proporcionados.
+Actualiza los metadatos de una venta existente. **No se pueden modificar los detalles (platillos) de la venta.**
 
 ### Parámetros de Ruta
 
@@ -403,12 +393,12 @@ Actualiza una venta existente. Solo se actualizan los campos proporcionados.
 
 | Campo      | Tipo     | Obligatorio | Descripción                             |
 | ---------- | -------- | ----------- | --------------------------------------- |
-| `saleDate` | `string` | No          | Nueva fecha de venta                    |
+| `saleDate` | `string` | No          | Nueva fecha de venta (`YYYY-MM-DD`)     |
 | `customer` | `string` | No          | Nuevo nombre del cliente                |
 | `notes`    | `string` | No          | Nuevas notas                            |
 | `status`   | `string` | No          | Nuevo estado: `Completed` o `Cancelled` |
 
-**Nota:** Los detalles de la venta no pueden actualizarse mediante PATCH. Para modificar platillos, elimine y cree una nueva venta.
+**Nota:** Los detalles de la venta (platillos, cantidades, precios, descuentos) **NO pueden modificarse** después de crear la venta. Para cambiar platillos, debe eliminar y crear una nueva venta.
 
 ### Ejemplo de Solicitud
 
@@ -418,7 +408,8 @@ Content-Type: application/json
 
 {
   "customer": "Carlos Ruiz Gómez",
-  "notes": "Mesa 10 - Aniversario - Cliente frecuente"
+  "notes": "Mesa 10 - Aniversario - Cliente frecuente",
+  "saleDate": "2025-10-21"
 }
 ```
 
@@ -430,13 +421,33 @@ Content-Type: application/json
   "message": "Sale updated successfully",
   "data": {
     "id": 10,
-    "saleDate": "2025-10-20",
+    "saleDate": "2025-10-21T05:00:00.000Z",
     "customer": "Carlos Ruiz Gómez",
-    "total": 65.0,
+    "total": 65,
     "notes": "Mesa 10 - Aniversario - Cliente frecuente",
-    "status": "Completed"
+    "status": "Completed",
+    "details": [
+      {
+        "id": 20,
+        "quantity": 2,
+        "unitPrice": 25.5,
+        "discount": 0,
+        "subtotal": 51,
+        "dish": {
+          "id": 1,
+          "name": "Pollo a la Brasa",
+          "description": "Pollo marinado con especias especiales",
+          "price": 25.5,
+          "status": "Active",
+          "category": {
+            "id": 1,
+            "name": "Platos Principales"
+          }
+        }
+      }
+    ]
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-04T22:40:00.000Z"
 }
 ```
 

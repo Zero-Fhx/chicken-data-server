@@ -8,20 +8,19 @@ Este recurso permite registrar y administrar las compras de ingredientes, actual
 
 ## Endpoints Disponibles
 
-| Método   | Endpoint                     | Descripción                    |
-| -------- | ---------------------------- | ------------------------------ |
-| `GET`    | `/api/purchases`             | Obtener todas las compras      |
-| `GET`    | `/api/purchases/:id`         | Obtener una compra por ID      |
-| `GET`    | `/api/purchases/:id/details` | Obtener detalles de una compra |
-| `POST`   | `/api/purchases`             | Crear una nueva compra         |
-| `PATCH`  | `/api/purchases/:id`         | Actualizar una compra          |
-| `DELETE` | `/api/purchases/:id`         | Eliminar una compra            |
+| Método   | Endpoint             | Descripción                            |
+| -------- | -------------------- | -------------------------------------- |
+| `GET`    | `/api/purchases`     | Obtener todas las compras con detalles |
+| `GET`    | `/api/purchases/:id` | Obtener una compra por ID con detalles |
+| `POST`   | `/api/purchases`     | Crear una nueva compra                 |
+| `PATCH`  | `/api/purchases/:id` | Actualizar metadatos de una compra     |
+| `DELETE` | `/api/purchases/:id` | Eliminar una compra                    |
 
 ---
 
 ## GET /api/purchases
 
-Obtiene una lista paginada de todas las compras.
+Obtiene una lista paginada de todas las compras con sus detalles completos (ingredientes incluidos).
 
 ### Parámetros de Consulta
 
@@ -37,7 +36,7 @@ Obtiene una lista paginada de todas las compras.
 ### Ejemplo de Solicitud
 
 ```http
-GET /api/purchases?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endDate=2025-10-20
+GET /api/purchases?page=1&pageSize=10&status=Completed
 ```
 
 ### Ejemplo de Respuesta
@@ -48,49 +47,79 @@ GET /api/purchases?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endD
   "message": "Purchases retrieved successfully",
   "data": [
     {
-      "id": 1,
-      "purchaseDate": "2025-10-15",
-      "total": 250.0,
-      "notes": "Compra semanal de pollo",
+      "id": 12,
+      "purchaseDate": "2025-09-24T05:00:00.000Z",
+      "total": 350,
       "status": "Completed",
+      "notes": "Pedido de bebidas para fin de mes",
       "supplier": {
-        "id": 1,
-        "name": "Distribuidora Avícola El Pollo Feliz",
-        "ruc": "20123456789",
-        "phone": "+51-987654321",
-        "email": "ventas@pollofeliz.com",
-        "address": "Av. Industrial 123, Lima",
-        "contactPerson": "Juan Pérez",
+        "id": 5,
+        "name": "Bebidas Nacionales S.A.",
+        "ruc": "20111222333",
+        "phone": "988777666",
+        "email": "distribucion@bebidanacional.com",
+        "address": "Av. Industrial 500, Ate",
+        "contactPerson": "Roberto Jimenez",
         "status": "Active"
-      }
+      },
+      "details": [
+        {
+          "id": 26,
+          "quantity": 100,
+          "unitPrice": 2,
+          "subtotal": 200,
+          "ingredient": {
+            "id": 5,
+            "name": "Gaseosa Inca Kola",
+            "unit": "unidad",
+            "status": "Active",
+            "stock": 138,
+            "minimumStock": 70,
+            "category": {
+              "id": 6,
+              "name": "Bebidas"
+            }
+          }
+        },
+        {
+          "id": 27,
+          "quantity": 50,
+          "unitPrice": 2,
+          "subtotal": 100,
+          "ingredient": {
+            "id": 12,
+            "name": "Gaseosa Coca Cola",
+            "unit": "unidad",
+            "status": "Active",
+            "stock": 89,
+            "minimumStock": 70,
+            "category": {
+              "id": 6,
+              "name": "Bebidas"
+            }
+          }
+        }
+      ]
     },
     {
-      "id": 2,
-      "purchaseDate": "2025-10-18",
-      "total": 180.5,
+      "id": 13,
+      "purchaseDate": null,
+      "total": 0,
       "status": "Completed",
-      "supplier": {
-        "id": 2,
-        "name": "Abarrotes Don José"
-      }
+      "notes": "Test"
     }
   ],
   "meta": {
     "pagination": {
       "page": 1,
       "pageSize": 10,
-      "pageCount": 1,
-      "total": 2,
-      "hasNextPage": false,
+      "pageCount": 2,
+      "total": 15,
+      "hasNextPage": true,
       "hasPrevPage": false
-    },
-    "filters": {
-      "status": "Completed",
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-20"
     }
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-04T22:30:02.370Z"
 }
 ```
 
@@ -98,7 +127,7 @@ GET /api/purchases?page=1&pageSize=10&status=Completed&startDate=2025-10-01&endD
 
 ## GET /api/purchases/:id
 
-Obtiene una compra específica por su ID.
+Obtiene una compra específica por su ID con todos sus detalles (ingredientes incluidos).
 
 ### Parámetros de Ruta
 
@@ -120,87 +149,66 @@ GET /api/purchases/1
   "message": "Purchase retrieved successfully",
   "data": {
     "id": 1,
-    "purchaseDate": "2025-10-15",
-    "total": 250.0,
-    "notes": "Compra semanal de pollo",
+    "purchaseDate": "2025-09-01T05:00:00.000Z",
+    "total": 350,
     "status": "Completed",
+    "notes": "Compra semanal de pollo y sal",
     "supplier": {
       "id": 1,
-      "name": "Distribuidora Avícola El Pollo Feliz",
+      "name": "Pollos San Fernando",
       "ruc": "20123456789",
-      "phone": "+51-987654321",
-      "email": "ventas@pollofeliz.com",
-      "address": "Av. Industrial 123, Lima",
-      "contactPerson": "Juan Pérez",
+      "phone": "987654321",
+      "email": "ventas@sanfernando.com",
+      "address": "Av. Grau 123, Lima",
+      "contactPerson": "Luis Pérez",
       "status": "Active"
-    }
+    },
+    "details": [
+      {
+        "id": 1,
+        "quantity": 50,
+        "unitPrice": 6,
+        "subtotal": 300,
+        "ingredient": {
+          "id": 1,
+          "name": "Pollo fresco",
+          "unit": "kg",
+          "status": "Active",
+          "stock": 34.15,
+          "minimumStock": 50,
+          "category": {
+            "id": 2,
+            "name": "Carnes"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "quantity": 5,
+        "unitPrice": 10,
+        "subtotal": 50,
+        "ingredient": {
+          "id": 4,
+          "name": "Sal",
+          "unit": "kg",
+          "status": "Active",
+          "stock": 5,
+          "minimumStock": 5,
+          "category": {
+            "id": 5,
+            "name": "Condimentos"
+          }
+        }
+      }
+    ]
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-04T22:30:19.911Z"
 }
 ```
 
 ### Códigos de Estado
 
 - `200` - Compra encontrada exitosamente
-- `400` - ID inválido
-- `404` - Compra no encontrada
-
----
-
-## GET /api/purchases/:id/details
-
-Obtiene los detalles completos de una compra, incluyendo todos los ingredientes comprados.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción     |
-| --------- | -------- | ----------- | --------------- |
-| `id`      | `number` | Sí          | ID de la compra |
-
-### Ejemplo de Solicitud
-
-```http
-GET /api/purchases/1/details
-```
-
-### Ejemplo de Respuesta
-
-```json
-{
-  "success": true,
-  "message": "Purchase details retrieved successfully",
-  "data": {
-    "id": 1,
-    "purchaseDate": "2025-10-15",
-    "total": 250.0,
-    "notes": "Compra semanal de pollo",
-    "status": "Completed",
-    "supplier": {
-      "id": 1,
-      "name": "Distribuidora Avícola El Pollo Feliz"
-    },
-    "details": [
-      {
-        "id": 1,
-        "purchaseId": 1,
-        "quantity": 50.0,
-        "unitPrice": 5.0,
-        "subtotal": 250.0,
-        "ingredient": {
-          "id": 1,
-          "name": "Pollo Entero",
-          "unit": "kg"
-        }
-      }
-    ]
-  },
-  "timestamp": "2025-10-20T19:28:47.212Z"
-}
-```
-
-### Códigos de Estado
-
-- `200` - Detalles de compra encontrados exitosamente
 - `400` - ID inválido
 - `404` - Compra no encontrada
 
@@ -222,24 +230,24 @@ Crea una nueva compra en el sistema y actualiza el stock de los ingredientes.
 
 #### Estructura de `details`
 
-| Campo           | Tipo     | Obligatorio | Descripción                      |
-| --------------- | -------- | ----------- | -------------------------------- |
-| `ingredient_id` | `number` | Sí          | ID del ingrediente comprado      |
-| `quantity`      | `number` | Sí          | Cantidad comprada (debe ser > 0) |
-| `unit_price`    | `number` | Sí          | Precio unitario (debe ser >= 0)  |
+| Campo          | Tipo     | Obligatorio | Descripción                      |
+| -------------- | -------- | ----------- | -------------------------------- |
+| `ingredientId` | `number` | Sí          | ID del ingrediente comprado      |
+| `quantity`     | `number` | Sí          | Cantidad comprada (debe ser > 0) |
+| `unitPrice`    | `number` | Sí          | Precio unitario (debe ser >= 0)  |
 
 ### Validaciones y Restricciones
 
-| Campo                     | Validación                                                   |
-| ------------------------- | ------------------------------------------------------------ |
-| `supplierId`              | Opcional, debe ser un número entero positivo válido o `null` |
-| `purchaseDate`            | Opcional, debe estar en formato `YYYY-MM-DD`                 |
-| `notes`                   | Opcional, puede ser `null`                                   |
-| `status`                  | Opcional, debe ser `Completed` o `Cancelled`                 |
-| `details`                 | Requerido, debe ser un array con al menos 1 elemento         |
-| `details[].ingredient_id` | Requerido, debe ser un número entero positivo válido         |
-| `details[].quantity`      | Requerido, debe ser un número > 0                            |
-| `details[].unit_price`    | Requerido, debe ser un número >= 0                           |
+| Campo                    | Validación                                                   |
+| ------------------------ | ------------------------------------------------------------ |
+| `supplierId`             | Opcional, debe ser un número entero positivo válido o `null` |
+| `purchaseDate`           | Opcional, debe estar en formato `YYYY-MM-DD`                 |
+| `notes`                  | Opcional, puede ser `null`                                   |
+| `status`                 | Opcional, debe ser `Completed` o `Cancelled`                 |
+| `details`                | Requerido, debe ser un array con al menos 1 elemento         |
+| `details[].ingredientId` | Requerido, debe ser un número entero positivo válido         |
+| `details[].quantity`     | Requerido, debe ser un número > 0                            |
+| `details[].unitPrice`    | Requerido, debe ser un número >= 0                           |
 
 ### Ejemplo de Solicitud
 
@@ -254,14 +262,14 @@ Content-Type: application/json
   "status": "Completed",
   "details": [
     {
-      "ingredient_id": 1,
+      "ingredientId": 1,
       "quantity": 30.0,
-      "unit_price": 5.00
+      "unitPrice": 5.00
     },
     {
-      "ingredient_id": 2,
+      "ingredientId": 2,
       "quantity": 20.0,
-      "unit_price": 2.50
+      "unitPrice": 2.50
     }
   ]
 }
@@ -324,7 +332,7 @@ Content-Type: application/json
 
 ## PATCH /api/purchases/:id
 
-Actualiza una compra existente. Solo se actualizan los campos proporcionados.
+Actualiza los metadatos de una compra existente. **No se pueden modificar los detalles (ingredientes) de la compra.**
 
 ### Parámetros de Ruta
 
@@ -337,11 +345,11 @@ Actualiza una compra existente. Solo se actualizan los campos proporcionados.
 | Campo          | Tipo     | Obligatorio | Descripción                             |
 | -------------- | -------- | ----------- | --------------------------------------- |
 | `supplierId`   | `number` | No          | Nuevo ID del proveedor                  |
-| `purchaseDate` | `string` | No          | Nueva fecha de compra                   |
+| `purchaseDate` | `string` | No          | Nueva fecha de compra (`YYYY-MM-DD`)    |
 | `notes`        | `string` | No          | Nuevas notas                            |
 | `status`       | `string` | No          | Nuevo estado: `Completed` o `Cancelled` |
 
-**Nota:** Los detalles de la compra no pueden actualizarse mediante PATCH. Para modificar ingredientes, elimine y cree una nueva compra.
+**Nota:** Los detalles de la compra (ingredientes, cantidades, precios) **NO pueden modificarse** después de crear la compra. Para cambiar ingredientes, debe eliminar y crear una nueva compra.
 
 ### Ejemplo de Solicitud
 
@@ -350,8 +358,9 @@ PATCH /api/purchases/5
 Content-Type: application/json
 
 {
+  "supplierId": 2,
   "notes": "Compra modificada - prioridad alta",
-  "status": "Completed"
+  "purchaseDate": "2025-10-21"
 }
 ```
 
@@ -363,16 +372,42 @@ Content-Type: application/json
   "message": "Purchase updated successfully",
   "data": {
     "id": 5,
-    "purchaseDate": "2025-10-20",
-    "total": 200.0,
+    "purchaseDate": "2025-10-21T05:00:00.000Z",
+    "total": 200,
     "notes": "Compra modificada - prioridad alta",
     "status": "Completed",
     "supplier": {
-      "id": 1,
-      "name": "Distribuidora Avícola El Pollo Feliz"
-    }
+      "id": 2,
+      "name": "Distribuidora La Granja",
+      "ruc": "20456789123",
+      "phone": "912345678",
+      "email": "contacto@lagranja.com",
+      "address": "Jr. Unión 456, Callao",
+      "contactPerson": "María López",
+      "status": "Active"
+    },
+    "details": [
+      {
+        "id": 10,
+        "quantity": 30,
+        "unitPrice": 5,
+        "subtotal": 150,
+        "ingredient": {
+          "id": 1,
+          "name": "Pollo fresco",
+          "unit": "kg",
+          "status": "Active",
+          "stock": 34.15,
+          "minimumStock": 50,
+          "category": {
+            "id": 2,
+            "name": "Carnes"
+          }
+        }
+      }
+    ]
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-04T22:35:00.000Z"
 }
 ```
 

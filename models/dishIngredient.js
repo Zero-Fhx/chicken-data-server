@@ -43,7 +43,7 @@ export const DishIngredientModel = {
 
   async addIngredient (dishId, ingredientData) {
     try {
-      const { ingredient_id: ingredientId, quantity_used: quantityUsed } = ingredientData
+      const { ingredientId, quantityUsed } = ingredientData
 
       const { rows: dishRows } = await pool.query(
         'SELECT dish_id FROM dishes WHERE dish_id = $1 AND deleted_at IS NULL',
@@ -188,7 +188,7 @@ export const DishIngredientModel = {
 
       if (ingredients && ingredients.length > 0) {
         for (const ingredient of ingredients) {
-          const { ingredient_id: ingredientId, quantity_used: quantityUsed } = ingredient
+          const { ingredientId, quantityUsed } = ingredient
 
           const { rows: ingredientRows } = await client.query(
             'SELECT ingredient_id FROM ingredients WHERE ingredient_id = $1 AND deleted_at IS NULL',
