@@ -76,7 +76,6 @@ export const SalesController = {
         message: 'Sale created successfully'
       })
     } catch (error) {
-      // Manejo especial para error de stock insuficiente
       if (error instanceof InsufficientStockError) {
         return res.status(400).json({
           success: false,
