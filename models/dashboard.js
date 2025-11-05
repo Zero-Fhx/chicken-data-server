@@ -1556,7 +1556,7 @@ export const DashboardModel = {
           WHERE pd.ingredient_id = i.ingredient_id
         ), 0)), 0) as current_value
       FROM ingredients i
-      WHERE status = 'Activo'
+      WHERE status = 'Active'
     `
 
     const result = await client.query(query)
@@ -1568,7 +1568,7 @@ export const DashboardModel = {
         0 as past_low_stock,
         0 as past_value
       FROM ingredients
-      WHERE status = 'Activo'
+      WHERE status = 'Active'
     `
 
     const compareResult = await client.query(compareQuery)
