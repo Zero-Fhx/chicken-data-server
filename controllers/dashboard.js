@@ -9,6 +9,36 @@ export const DashboardController = {
         url: `${baseUrl}/stats`,
         method: 'GET',
         description: 'Obtiene todas las estadísticas agregadas del dashboard (ventas, compras, inventario, platos, proveedores y actividad reciente)'
+      },
+      sales: {
+        url: `${baseUrl}/stats/sales`,
+        method: 'GET',
+        description: 'Obtiene solo las estadísticas de ventas'
+      },
+      purchases: {
+        url: `${baseUrl}/stats/purchases`,
+        method: 'GET',
+        description: 'Obtiene solo las estadísticas de compras'
+      },
+      inventory: {
+        url: `${baseUrl}/stats/inventory`,
+        method: 'GET',
+        description: 'Obtiene solo las estadísticas de inventario'
+      },
+      dishes: {
+        url: `${baseUrl}/stats/dishes`,
+        method: 'GET',
+        description: 'Obtiene solo las estadísticas de platos'
+      },
+      suppliers: {
+        url: `${baseUrl}/stats/suppliers`,
+        method: 'GET',
+        description: 'Obtiene solo las estadísticas de proveedores'
+      },
+      activity: {
+        url: `${baseUrl}/stats/activity`,
+        method: 'GET',
+        description: 'Obtiene solo la actividad reciente del sistema'
       }
     }
 
@@ -27,6 +57,90 @@ export const DashboardController = {
         res,
         data: stats,
         message: 'Dashboard statistics retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getSalesStats (req, res) {
+    try {
+      const sales = await DashboardModel.getSalesStats()
+
+      return handleResponse({
+        res,
+        data: sales,
+        message: 'Sales statistics retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getPurchasesStats (req, res) {
+    try {
+      const purchases = await DashboardModel.getPurchasesStats()
+
+      return handleResponse({
+        res,
+        data: purchases,
+        message: 'Purchases statistics retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getInventoryStats (req, res) {
+    try {
+      const inventory = await DashboardModel.getInventoryStats()
+
+      return handleResponse({
+        res,
+        data: inventory,
+        message: 'Inventory statistics retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getDishesStats (req, res) {
+    try {
+      const dishes = await DashboardModel.getDishesStats()
+
+      return handleResponse({
+        res,
+        data: dishes,
+        message: 'Dishes statistics retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getSuppliersStats (req, res) {
+    try {
+      const suppliers = await DashboardModel.getSuppliersStats()
+
+      return handleResponse({
+        res,
+        data: suppliers,
+        message: 'Suppliers statistics retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getRecentActivity (req, res) {
+    try {
+      const activity = await DashboardModel.getRecentActivity()
+
+      return handleResponse({
+        res,
+        data: activity,
+        message: 'Recent activity retrieved successfully'
       })
     } catch (error) {
       return handleError({ res, status: error.statusCode || 500, error })

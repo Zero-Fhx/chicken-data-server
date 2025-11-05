@@ -23,6 +23,78 @@ export const DashboardModel = {
     }
   },
 
+  async getSalesStats () {
+    const client = await pool.connect()
+    try {
+      return await this._getSalesStats(client)
+    } catch (error) {
+      console.error('Error fetching sales stats:', error)
+      throw new InternalServerError('Failed to fetch sales statistics')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getPurchasesStats () {
+    const client = await pool.connect()
+    try {
+      return await this._getPurchasesStats(client)
+    } catch (error) {
+      console.error('Error fetching purchases stats:', error)
+      throw new InternalServerError('Failed to fetch purchases statistics')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getInventoryStats () {
+    const client = await pool.connect()
+    try {
+      return await this._getInventoryStats(client)
+    } catch (error) {
+      console.error('Error fetching inventory stats:', error)
+      throw new InternalServerError('Failed to fetch inventory statistics')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getDishesStats () {
+    const client = await pool.connect()
+    try {
+      return await this._getDishesStats(client)
+    } catch (error) {
+      console.error('Error fetching dishes stats:', error)
+      throw new InternalServerError('Failed to fetch dishes statistics')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getSuppliersStats () {
+    const client = await pool.connect()
+    try {
+      return await this._getSuppliersStats(client)
+    } catch (error) {
+      console.error('Error fetching suppliers stats:', error)
+      throw new InternalServerError('Failed to fetch suppliers statistics')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getRecentActivity () {
+    const client = await pool.connect()
+    try {
+      return await this._getRecentActivity(client)
+    } catch (error) {
+      console.error('Error fetching recent activity:', error)
+      throw new InternalServerError('Failed to fetch recent activity')
+    } finally {
+      client.release()
+    }
+  },
+
   async _getSalesStats (client) {
     try {
       const now = new Date()
