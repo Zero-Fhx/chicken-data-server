@@ -766,11 +766,21 @@ export const DashboardModel = {
       daily_inventory AS (
         SELECT 
           ds.period_date,
-          COUNT(DISTINCT i.id)::int as items_count,
-          ROUND(CAST(COALESCE(SUM(i.quantity * i.unit_cost), 0) AS numeric), 2) as total_value,
-          COUNT(*) FILTER (WHERE i.quantity <= i.minimum_stock)::int as low_stock_count
+          COUNT(DISTINCT i.ingredient_id)::int as items_count,
+          ROUND(CAST(COALESCE(SUM(
+            i.stock * COALESCE(
+              (SELECT AVG(pd.unit_price) 
+               FROM purchase_details pd 
+               WHERE pd.ingredient_id = i.ingredient_id 
+                 AND pd.deleted_at IS NULL
+               LIMIT 5),
+              0
+            )
+          ), 0) AS numeric), 2) as total_value,
+          COUNT(*) FILTER (WHERE i.stock <= i.minimum_stock)::int as low_stock_count
         FROM date_series ds
         LEFT JOIN ingredients i ON i.created_at AT TIME ZONE 'UTC' <= ds.period_date
+          AND i.deleted_at IS NULL
         GROUP BY ds.period_date
       )
       SELECT 
@@ -788,16 +798,17 @@ export const DashboardModel = {
   async _getLowStockAlerts (client) {
     const query = `
       SELECT 
-        i.id,
+        i.ingredient_id,
         i.name,
-        i.quantity,
+        i.stock,
         i.minimum_stock,
         i.unit,
-        ROUND(CAST((i.quantity / NULLIF(i.minimum_stock, 0) * 100) AS numeric), 1) as stock_percentage
+        ROUND(CAST((i.stock / NULLIF(i.minimum_stock, 0) * 100) AS numeric), 1) as stock_percentage
       FROM ingredients i
-      WHERE i.quantity <= i.minimum_stock
+      WHERE i.stock <= i.minimum_stock
         AND i.minimum_stock > 0
-      ORDER BY stock_percentage ASC, i.quantity ASC
+        AND i.deleted_at IS NULL
+      ORDER BY stock_percentage ASC, i.stock ASC
     `
     const result = await client.query(query)
     
@@ -807,15 +818,15 @@ export const DashboardModel = {
     result.rows.forEach(row => {
       const stockPercentage = parseFloat(row.stock_percentage) || 0
       const alert = {
-        id: `low-stock-${row.id}`,
+        id: `low-stock-${row.ingredient_id}`,
         type: 'low_stock',
         severity: stockPercentage <= 25 ? 'critical' : 'warning',
         title: stockPercentage === 0 ? `Sin stock: ${row.name}` : `Stock bajo: ${row.name}`,
-        message: `${row.quantity} ${row.unit} disponibles (mínimo: ${row.minimum_stock} ${row.unit})`,
+        message: `${row.stock} ${row.unit} disponibles (mínimo: ${row.minimum_stock} ${row.unit})`,
         data: {
-          ingredientId: row.id,
+          ingredientId: row.ingredient_id,
           ingredientName: row.name,
-          currentStock: parseFloat(row.quantity),
+          currentStock: parseFloat(row.stock),
           minimumStock: parseFloat(row.minimum_stock),
           unit: row.unit,
           stockPercentage
@@ -837,21 +848,41 @@ export const DashboardModel = {
   async _getUnusedIngredientsAlerts (client) {
     const query = `
       SELECT 
-        i.id,
+        i.ingredient_id,
         i.name,
-        i.quantity,
+        i.stock,
         i.unit,
-        ROUND(CAST(i.quantity * i.unit_cost AS numeric), 2) as stock_value,
+        COALESCE(
+          (SELECT AVG(pd.unit_price) 
+           FROM purchase_details pd 
+           WHERE pd.ingredient_id = i.ingredient_id 
+             AND pd.deleted_at IS NULL
+           LIMIT 5),
+          0
+        ) as avg_unit_price,
+        ROUND(CAST(i.stock * COALESCE(
+          (SELECT AVG(pd.unit_price) 
+           FROM purchase_details pd 
+           WHERE pd.ingredient_id = i.ingredient_id 
+             AND pd.deleted_at IS NULL
+           LIMIT 5),
+          0
+        ) AS numeric), 2) as stock_value,
         COALESCE(
           EXTRACT(EPOCH FROM (NOW() - MAX(p.created_at AT TIME ZONE 'UTC'))) / 86400,
           999
         )::int as days_since_last_purchase,
         COUNT(DISTINCT di.dish_id)::int as used_in_dishes
       FROM ingredients i
-      LEFT JOIN purchases p ON p.ingredient_id = i.id
-      LEFT JOIN dish_ingredients di ON di.ingredient_id = i.id
-      WHERE i.quantity > 0
-      GROUP BY i.id, i.name, i.quantity, i.unit, i.unit_cost
+      LEFT JOIN purchases p ON p.purchase_id IN (
+        SELECT DISTINCT pd.purchase_id 
+        FROM purchase_details pd 
+        WHERE pd.ingredient_id = i.ingredient_id
+      )
+      LEFT JOIN dish_ingredients di ON di.ingredient_id = i.ingredient_id
+      WHERE i.stock > 0
+        AND i.deleted_at IS NULL
+      GROUP BY i.ingredient_id, i.name, i.stock, i.unit
       HAVING COUNT(DISTINCT di.dish_id) = 0
       ORDER BY stock_value DESC
       LIMIT 10
@@ -859,15 +890,15 @@ export const DashboardModel = {
     const result = await client.query(query)
     
     return result.rows.map(row => ({
-      id: `unused-ingredient-${row.id}`,
+      id: `unused-ingredient-${row.ingredient_id}`,
       type: 'unused_ingredient',
       severity: 'warning',
       title: `Ingrediente sin uso: ${row.name}`,
       message: `No está asignado a ningún platillo (valor en stock: $${row.stock_value})`,
       data: {
-        ingredientId: row.id,
+        ingredientId: row.ingredient_id,
         ingredientName: row.name,
-        quantity: parseFloat(row.quantity),
+        quantity: parseFloat(row.stock),
         unit: row.unit,
         stockValue: parseFloat(row.stock_value),
         daysSinceLastPurchase: row.days_since_last_purchase,
@@ -944,39 +975,56 @@ export const DashboardModel = {
   async _getUnnecessaryPurchasesAlerts (client) {
     const query = `
       SELECT 
-        i.id,
+        i.ingredient_id,
         i.name,
-        i.quantity,
+        i.stock,
         i.minimum_stock,
         i.unit,
-        ROUND(CAST(i.quantity * i.unit_cost AS numeric), 2) as stock_value,
-        ROUND(CAST((i.quantity / NULLIF(i.minimum_stock, 0)) AS numeric), 1) as stock_ratio,
         COALESCE(
-          ROUND(CAST(AVG(p.quantity) AS numeric), 2),
+          (SELECT AVG(pd.unit_price) 
+           FROM purchase_details pd 
+           WHERE pd.ingredient_id = i.ingredient_id 
+             AND pd.deleted_at IS NULL
+           LIMIT 5),
+          0
+        ) as avg_unit_price,
+        ROUND(CAST(i.stock * COALESCE(
+          (SELECT AVG(pd.unit_price) 
+           FROM purchase_details pd 
+           WHERE pd.ingredient_id = i.ingredient_id 
+             AND pd.deleted_at IS NULL
+           LIMIT 5),
+          0
+        ) AS numeric), 2) as stock_value,
+        ROUND(CAST((i.stock / NULLIF(i.minimum_stock, 0)) AS numeric), 1) as stock_ratio,
+        COALESCE(
+          ROUND(CAST(AVG(pd.quantity) AS numeric), 2),
           0
         ) as avg_purchase_quantity,
-        COUNT(p.id)::int as purchase_count_last_90_days
+        COUNT(DISTINCT pd.purchase_id)::int as purchase_count_last_90_days
       FROM ingredients i
-      LEFT JOIN purchases p ON p.ingredient_id = i.id 
-        AND p.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
-      WHERE i.quantity > i.minimum_stock * 3
+      LEFT JOIN purchase_details pd ON pd.ingredient_id = i.ingredient_id 
+        AND pd.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
+        AND pd.deleted_at IS NULL
+      WHERE i.stock > i.minimum_stock * 3
         AND i.minimum_stock > 0
-      GROUP BY i.id, i.name, i.quantity, i.minimum_stock, i.unit, i.unit_cost
+        AND i.deleted_at IS NULL
+      GROUP BY i.ingredient_id, i.name, i.stock, i.minimum_stock, i.unit
       ORDER BY stock_ratio DESC
       LIMIT 10
     `
     const result = await client.query(query)
     
     return result.rows.map(row => ({
-      id: `overstock-${row.id}`,
+      id: `overstock-${row.ingredient_id}`,
       type: 'overstock',
       severity: 'info',
       title: `Sobrestock: ${row.name}`,
       message: `Stock actual es ${parseFloat(row.stock_ratio)}x el mínimo requerido (valor: $${row.stock_value})`,
       data: {
-        ingredientId: row.id,
+        ingredientId: row.ingredient_id,
         ingredientName: row.name,
-        currentStock: parseFloat(row.quantity),
+        currentStock: parseFloat(row.stock),
         minimumStock: parseFloat(row.minimum_stock),
         unit: row.unit,
         stockValue: parseFloat(row.stock_value),
