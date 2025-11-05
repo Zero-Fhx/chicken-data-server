@@ -53,6 +53,14 @@ export const DashboardController = {
         url: `${baseUrl}/alerts`,
         method: 'GET',
         description: 'Obtiene alertas inteligentes del sistema (stock bajo, ingredientes sin uso, caídas de ventas, sobrestock)'
+      },
+      projections: {
+        url: `${baseUrl}/projections`,
+        method: 'GET',
+        description: 'Obtiene proyecciones de ventas, predicciones de stock y recomendaciones de compra',
+        params: {
+          days: 'Número de días a proyectar (1-365). Por defecto: 30'
+        }
       }
     }
 
@@ -185,6 +193,31 @@ export const DashboardController = {
         res,
         data: alerts,
         message: 'Alerts retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getProjections (req, res) {
+    try {
+      const { days = 30 } = req.query
+      const daysInt = parseInt(days)
+
+      if (isNaN(daysInt) || daysInt < 1 || daysInt > 365) {
+        return handleError({
+          res,
+          status: 400,
+          error: { message: 'Days must be a number between 1 and 365' }
+        })
+      }
+
+      const projections = await DashboardModel.getProjections(daysInt)
+
+      return handleResponse({
+        res,
+        data: projections,
+        message: 'Projections retrieved successfully'
       })
     } catch (error) {
       return handleError({ res, status: error.statusCode || 500, error })

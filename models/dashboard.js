@@ -1,5 +1,5 @@
 import pool from '../config/database.js'
-import { InternalServerError, BadRequestError } from '../utils/errors.js'
+import { BadRequestError, InternalServerError } from '../utils/errors.js'
 
 export const DashboardModel = {
   async getStats () {
@@ -146,6 +146,24 @@ export const DashboardModel = {
     } catch (error) {
       console.error('Error fetching alerts:', error)
       throw new InternalServerError('Failed to fetch alerts')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getProjections (days = 30) {
+    const client = await pool.connect()
+    try {
+      const projections = {
+        sales: await this._getSalesProjections(client, days),
+        stock: await this._getStockProjections(client, days),
+        purchases: await this._getPurchaseRecommendations(client, days)
+      }
+
+      return projections
+    } catch (error) {
+      console.error('Error fetching projections:', error)
+      throw new InternalServerError('Failed to fetch projections')
     } finally {
       client.release()
     }
@@ -811,7 +829,7 @@ export const DashboardModel = {
       ORDER BY stock_percentage ASC, i.stock ASC
     `
     const result = await client.query(query)
-    
+
     const critical = []
     const warning = []
 
@@ -888,7 +906,7 @@ export const DashboardModel = {
       LIMIT 10
     `
     const result = await client.query(query)
-    
+
     return result.rows.map(row => ({
       id: `unused-ingredient-${row.ingredient_id}`,
       type: 'unused_ingredient',
@@ -946,7 +964,7 @@ export const DashboardModel = {
         )
     `
     const result = await client.query(query)
-    
+
     return result.rows.map(row => ({
       id: 'sales-drop-current-week',
       type: 'sales_drop',
@@ -1014,7 +1032,7 @@ export const DashboardModel = {
       LIMIT 10
     `
     const result = await client.query(query)
-    
+
     return result.rows.map(row => ({
       id: `overstock-${row.ingredient_id}`,
       type: 'overstock',
@@ -1035,6 +1053,167 @@ export const DashboardModel = {
       action: 'Reducir cantidad en próximas compras',
       timestamp: new Date().toISOString()
     }))
+  },
+
+  async _getSalesProjections (client, days) {
+    const query = `
+      WITH daily_sales AS (
+        SELECT 
+          DATE(created_at AT TIME ZONE 'UTC') as sale_date,
+          COUNT(*)::int as order_count,
+          ROUND(CAST(SUM(total) AS numeric), 2) as daily_revenue
+        FROM sales
+        WHERE created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
+          AND status != 'Cancelled'
+          AND deleted_at IS NULL
+        GROUP BY sale_date
+      ),
+      stats AS (
+        SELECT 
+          ROUND(CAST(AVG(order_count) AS numeric), 2) as avg_orders_per_day,
+          ROUND(CAST(AVG(daily_revenue) AS numeric), 2) as avg_revenue_per_day,
+          ROUND(CAST(STDDEV(daily_revenue) AS numeric), 2) as stddev_revenue
+        FROM daily_sales
+      )
+      SELECT 
+        avg_orders_per_day,
+        avg_revenue_per_day,
+        stddev_revenue,
+        ROUND(CAST(avg_orders_per_day * $1 AS numeric), 0) as projected_orders,
+        ROUND(CAST(avg_revenue_per_day * $1 AS numeric), 2) as projected_revenue,
+        ROUND(CAST((avg_revenue_per_day - stddev_revenue) * $1 AS numeric), 2) as conservative_projection,
+        ROUND(CAST((avg_revenue_per_day + stddev_revenue) * $1 AS numeric), 2) as optimistic_projection
+      FROM stats
+    `
+    const result = await client.query(query, [days])
+    const row = result.rows[0] || {}
+    
+    return {
+      period: `${days} días`,
+      avgOrdersPerDay: parseFloat(row.avg_orders_per_day) || 0,
+      avgRevenuePerDay: parseFloat(row.avg_revenue_per_day) || 0,
+      projectedOrders: parseInt(row.projected_orders) || 0,
+      projectedRevenue: parseFloat(row.projected_revenue) || 0,
+      range: {
+        conservative: parseFloat(row.conservative_projection) || 0,
+        optimistic: parseFloat(row.optimistic_projection) || 0
+      }
+    }
+  },
+
+  async _getStockProjections (client, days) {
+    const query = `
+      WITH ingredient_usage AS (
+        SELECT 
+          i.ingredient_id,
+          i.name,
+          i.stock,
+          i.minimum_stock,
+          i.unit,
+          COALESCE(
+            (SELECT AVG(pd.unit_price) 
+             FROM purchase_details pd 
+             WHERE pd.ingredient_id = i.ingredient_id 
+               AND pd.deleted_at IS NULL
+             LIMIT 5),
+            0
+          ) as avg_unit_price,
+          COALESCE(
+            SUM(di.quantity_used * s.quantity) / 
+            NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
+            0
+          ) as daily_usage
+        FROM ingredients i
+        LEFT JOIN dish_ingredients di ON di.ingredient_id = i.ingredient_id
+        LEFT JOIN sale_details sd ON sd.dish_id = di.dish_id
+        LEFT JOIN sales s ON s.sale_id = sd.sale_id 
+          AND s.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '60 days'
+          AND s.status != 'Cancelled'
+          AND s.deleted_at IS NULL
+        WHERE i.deleted_at IS NULL
+          AND i.stock > 0
+        GROUP BY i.ingredient_id, i.name, i.stock, i.minimum_stock, i.unit
+        HAVING COALESCE(
+          SUM(di.quantity_used * s.quantity) / 
+          NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
+          0
+        ) > 0
+      )
+      SELECT 
+        ingredient_id,
+        name,
+        stock,
+        minimum_stock,
+        unit,
+        avg_unit_price,
+        ROUND(CAST(daily_usage AS numeric), 3) as daily_usage,
+        ROUND(CAST(stock / NULLIF(daily_usage, 0) AS numeric), 1) as days_until_depleted,
+        CASE 
+          WHEN (stock / NULLIF(daily_usage, 0)) < $1 THEN 
+            ROUND(CAST((daily_usage * $1 - stock + minimum_stock) AS numeric), 2)
+          ELSE 0
+        END as recommended_order_quantity,
+        CASE 
+          WHEN (stock / NULLIF(daily_usage, 0)) < $1 THEN 
+            ROUND(CAST((daily_usage * $1 - stock + minimum_stock) * avg_unit_price AS numeric), 2)
+          ELSE 0
+        END as estimated_cost
+      FROM ingredient_usage
+      WHERE (stock / NULLIF(daily_usage, 0)) <= $1 + 7
+      ORDER BY days_until_depleted ASC
+      LIMIT 20
+    `
+    const result = await client.query(query, [days])
+    
+    return result.rows.map(row => ({
+      ingredientId: row.ingredient_id,
+      ingredientName: row.name,
+      currentStock: parseFloat(row.stock),
+      minimumStock: parseFloat(row.minimum_stock),
+      unit: row.unit,
+      dailyUsage: parseFloat(row.daily_usage),
+      daysUntilDepleted: parseFloat(row.days_until_depleted),
+      recommendedOrderQuantity: parseFloat(row.recommended_order_quantity),
+      estimatedCost: parseFloat(row.estimated_cost),
+      priority: parseFloat(row.days_until_depleted) < days / 2 ? 'high' : 'medium'
+    }))
+  },
+
+  async _getPurchaseRecommendations (client, days) {
+    const stockProjections = await this._getStockProjections(client, days)
+    
+    const totalCost = stockProjections.reduce((sum, item) => sum + item.estimatedCost, 0)
+    const highPriority = stockProjections.filter(item => item.priority === 'high')
+    const mediumPriority = stockProjections.filter(item => item.priority === 'medium')
+    
+    return {
+      summary: {
+        totalItems: stockProjections.length,
+        highPriorityItems: highPriority.length,
+        mediumPriorityItems: mediumPriority.length,
+        estimatedTotalCost: Math.round(totalCost * 100) / 100
+      },
+      recommendations: stockProjections,
+      nextPurchaseDate: this._calculateNextPurchaseDate(stockProjections)
+    }
+  },
+
+  _calculateNextPurchaseDate (projections) {
+    if (projections.length === 0) {
+      return null
+    }
+    
+    const nearestDepletion = Math.min(...projections.map(p => p.daysUntilDepleted))
+    const recommendedDays = Math.max(1, Math.floor(nearestDepletion - 2))
+    
+    const date = new Date()
+    date.setDate(date.getDate() + recommendedDays)
+    
+    return {
+      date: date.toISOString().split('T')[0],
+      daysFromNow: recommendedDays,
+      reason: `El ingrediente ${projections[0].ingredientName} se agotará en ${Math.round(nearestDepletion)} días`
+    }
   },
 
   _parsePeriod (period) {
