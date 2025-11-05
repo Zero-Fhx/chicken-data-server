@@ -1310,5 +1310,543 @@ export const DashboardModel = {
       yearly: 'year'
     }
     return truncMap[granularity] || 'day'
+  },
+
+  async getComparisons () {
+    const client = await pool.connect()
+    try {
+      const comparisons = {
+        sales: await this._getSalesComparisons(client),
+        purchases: await this._getPurchasesComparisons(client),
+        inventory: await this._getInventoryComparisons(client),
+        dishes: await this._getDishesComparisons(client)
+      }
+
+      return comparisons
+    } catch (error) {
+      console.error('Error fetching comparisons:', error)
+      throw new InternalServerError('Failed to fetch comparisons')
+    } finally {
+      client.release()
+    }
+  },
+
+  async _getSalesComparisons (client) {
+    const query = `
+      WITH current_periods AS (
+        SELECT
+          -- Hoy
+          COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE THEN total ELSE 0 END), 0) as today,
+          -- Semana actual
+          COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '6 days' AND sale_date <= CURRENT_DATE THEN total ELSE 0 END), 0) as this_week,
+          -- Mes actual
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_month,
+          -- Año actual
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_year
+        FROM sales
+        WHERE status = 'Completed'
+      ),
+      previous_periods AS (
+        SELECT
+          -- Ayer
+          COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE - INTERVAL '1 day' THEN total ELSE 0 END), 0) as yesterday,
+          -- Semana anterior
+          COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '13 days' AND sale_date <= CURRENT_DATE - INTERVAL '7 days' THEN total ELSE 0 END), 0) as last_week,
+          -- Mes anterior
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN total ELSE 0 END), 0) as last_month,
+          -- Año anterior
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as last_year
+        FROM sales
+        WHERE status = 'Completed'
+      ),
+      same_day_last_year AS (
+        SELECT
+          COALESCE(SUM(total), 0) as same_day_last_year
+        FROM sales
+        WHERE sale_date = CURRENT_DATE - INTERVAL '1 year'
+          AND status = 'Completed'
+      ),
+      same_week_last_year AS (
+        SELECT
+          COALESCE(SUM(total), 0) as same_week_last_year
+        FROM sales
+        WHERE sale_date >= (CURRENT_DATE - INTERVAL '1 year') - INTERVAL '6 days'
+          AND sale_date <= (CURRENT_DATE - INTERVAL '1 year')
+          AND status = 'Completed'
+      ),
+      same_month_last_year AS (
+        SELECT
+          COALESCE(SUM(total), 0) as same_month_last_year
+        FROM sales
+        WHERE DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 year')
+          AND status = 'Completed'
+      )
+      SELECT
+        cp.today,
+        pp.yesterday,
+        sdly.same_day_last_year,
+        CASE WHEN pp.yesterday > 0 THEN ROUND(((cp.today - pp.yesterday) / pp.yesterday * 100)::numeric, 1) ELSE NULL END as vs_yesterday_percent,
+        CASE WHEN sdly.same_day_last_year > 0 THEN ROUND(((cp.today - sdly.same_day_last_year) / sdly.same_day_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_day_last_year_percent,
+        
+        cp.this_week,
+        pp.last_week,
+        swly.same_week_last_year,
+        CASE WHEN pp.last_week > 0 THEN ROUND(((cp.this_week - pp.last_week) / pp.last_week * 100)::numeric, 1) ELSE NULL END as vs_last_week_percent,
+        CASE WHEN swly.same_week_last_year > 0 THEN ROUND(((cp.this_week - swly.same_week_last_year) / swly.same_week_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_week_last_year_percent,
+        
+        cp.this_month,
+        pp.last_month,
+        smly.same_month_last_year,
+        CASE WHEN pp.last_month > 0 THEN ROUND(((cp.this_month - pp.last_month) / pp.last_month * 100)::numeric, 1) ELSE NULL END as vs_last_month_percent,
+        CASE WHEN smly.same_month_last_year > 0 THEN ROUND(((cp.this_month - smly.same_month_last_year) / smly.same_month_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_month_last_year_percent,
+        
+        cp.this_year,
+        pp.last_year,
+        CASE WHEN pp.last_year > 0 THEN ROUND(((cp.this_year - pp.last_year) / pp.last_year * 100)::numeric, 1) ELSE NULL END as vs_last_year_percent
+      FROM current_periods cp
+      CROSS JOIN previous_periods pp
+      CROSS JOIN same_day_last_year sdly
+      CROSS JOIN same_week_last_year swly
+      CROSS JOIN same_month_last_year smly
+    `
+
+    const result = await client.query(query)
+    const row = result.rows[0]
+
+    return {
+      today: {
+        current: parseFloat(row.today),
+        vsYesterday: {
+          value: parseFloat(row.yesterday),
+          change: row.vs_yesterday_percent ? parseFloat(row.vs_yesterday_percent) : null
+        },
+        vsSameDayLastYear: {
+          value: parseFloat(row.same_day_last_year),
+          change: row.vs_same_day_last_year_percent ? parseFloat(row.vs_same_day_last_year_percent) : null
+        }
+      },
+      week: {
+        current: parseFloat(row.this_week),
+        vsLastWeek: {
+          value: parseFloat(row.last_week),
+          change: row.vs_last_week_percent ? parseFloat(row.vs_last_week_percent) : null
+        },
+        vsSameWeekLastYear: {
+          value: parseFloat(row.same_week_last_year),
+          change: row.vs_same_week_last_year_percent ? parseFloat(row.vs_same_week_last_year_percent) : null
+        }
+      },
+      month: {
+        current: parseFloat(row.this_month),
+        vsLastMonth: {
+          value: parseFloat(row.last_month),
+          change: row.vs_last_month_percent ? parseFloat(row.vs_last_month_percent) : null
+        },
+        vsSameMonthLastYear: {
+          value: parseFloat(row.same_month_last_year),
+          change: row.vs_same_month_last_year_percent ? parseFloat(row.vs_same_month_last_year_percent) : null
+        }
+      },
+      year: {
+        current: parseFloat(row.this_year),
+        vsLastYear: {
+          value: parseFloat(row.last_year),
+          change: row.vs_last_year_percent ? parseFloat(row.vs_last_year_percent) : null
+        }
+      }
+    }
+  },
+
+  async _getPurchasesComparisons (client) {
+    const query = `
+      WITH current_periods AS (
+        SELECT
+          COALESCE(SUM(CASE WHEN purchase_date = CURRENT_DATE THEN total ELSE 0 END), 0) as today,
+          COALESCE(SUM(CASE WHEN purchase_date >= CURRENT_DATE - INTERVAL '6 days' AND purchase_date <= CURRENT_DATE THEN total ELSE 0 END), 0) as this_week,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', purchase_date) = DATE_TRUNC('month', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_month,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', purchase_date) = DATE_TRUNC('year', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_year
+        FROM purchases
+      ),
+      previous_periods AS (
+        SELECT
+          COALESCE(SUM(CASE WHEN purchase_date = CURRENT_DATE - INTERVAL '1 day' THEN total ELSE 0 END), 0) as yesterday,
+          COALESCE(SUM(CASE WHEN purchase_date >= CURRENT_DATE - INTERVAL '13 days' AND purchase_date <= CURRENT_DATE - INTERVAL '7 days' THEN total ELSE 0 END), 0) as last_week,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', purchase_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN total ELSE 0 END), 0) as last_month,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', purchase_date) = DATE_TRUNC('year', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as last_year
+        FROM purchases
+      ),
+      same_periods_last_year AS (
+        SELECT
+          COALESCE(SUM(CASE WHEN purchase_date = CURRENT_DATE - INTERVAL '1 year' THEN total ELSE 0 END), 0) as same_day_last_year,
+          COALESCE(SUM(CASE WHEN purchase_date >= (CURRENT_DATE - INTERVAL '1 year') - INTERVAL '6 days' AND purchase_date <= (CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as same_week_last_year,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', purchase_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as same_month_last_year
+        FROM purchases
+      )
+      SELECT
+        cp.*,
+        pp.*,
+        sp.*,
+        CASE WHEN pp.yesterday > 0 THEN ROUND(((cp.today - pp.yesterday) / pp.yesterday * 100)::numeric, 1) ELSE NULL END as vs_yesterday_percent,
+        CASE WHEN sp.same_day_last_year > 0 THEN ROUND(((cp.today - sp.same_day_last_year) / sp.same_day_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_day_last_year_percent,
+        CASE WHEN pp.last_week > 0 THEN ROUND(((cp.this_week - pp.last_week) / pp.last_week * 100)::numeric, 1) ELSE NULL END as vs_last_week_percent,
+        CASE WHEN sp.same_week_last_year > 0 THEN ROUND(((cp.this_week - sp.same_week_last_year) / sp.same_week_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_week_last_year_percent,
+        CASE WHEN pp.last_month > 0 THEN ROUND(((cp.this_month - pp.last_month) / pp.last_month * 100)::numeric, 1) ELSE NULL END as vs_last_month_percent,
+        CASE WHEN sp.same_month_last_year > 0 THEN ROUND(((cp.this_month - sp.same_month_last_year) / sp.same_month_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_month_last_year_percent,
+        CASE WHEN pp.last_year > 0 THEN ROUND(((cp.this_year - pp.last_year) / pp.last_year * 100)::numeric, 1) ELSE NULL END as vs_last_year_percent
+      FROM current_periods cp
+      CROSS JOIN previous_periods pp
+      CROSS JOIN same_periods_last_year sp
+    `
+
+    const result = await client.query(query)
+    const row = result.rows[0]
+
+    return {
+      today: {
+        current: parseFloat(row.today),
+        vsYesterday: {
+          value: parseFloat(row.yesterday),
+          change: row.vs_yesterday_percent ? parseFloat(row.vs_yesterday_percent) : null
+        },
+        vsSameDayLastYear: {
+          value: parseFloat(row.same_day_last_year),
+          change: row.vs_same_day_last_year_percent ? parseFloat(row.vs_same_day_last_year_percent) : null
+        }
+      },
+      week: {
+        current: parseFloat(row.this_week),
+        vsLastWeek: {
+          value: parseFloat(row.last_week),
+          change: row.vs_last_week_percent ? parseFloat(row.vs_last_week_percent) : null
+        },
+        vsSameWeekLastYear: {
+          value: parseFloat(row.same_week_last_year),
+          change: row.vs_same_week_last_year_percent ? parseFloat(row.vs_same_week_last_year_percent) : null
+        }
+      },
+      month: {
+        current: parseFloat(row.this_month),
+        vsLastMonth: {
+          value: parseFloat(row.last_month),
+          change: row.vs_last_month_percent ? parseFloat(row.vs_last_month_percent) : null
+        },
+        vsSameMonthLastYear: {
+          value: parseFloat(row.same_month_last_year),
+          change: row.vs_same_month_last_year_percent ? parseFloat(row.vs_same_month_last_year_percent) : null
+        }
+      },
+      year: {
+        current: parseFloat(row.this_year),
+        vsLastYear: {
+          value: parseFloat(row.last_year),
+          change: row.vs_last_year_percent ? parseFloat(row.vs_last_year_percent) : null
+        }
+      }
+    }
+  },
+
+  async _getInventoryComparisons (client) {
+    const query = `
+      SELECT
+        COUNT(*) as current_total,
+        COALESCE(SUM(CASE WHEN stock <= minimum_stock THEN 1 ELSE 0 END), 0) as current_low_stock,
+        COALESCE(SUM(stock * COALESCE((
+          SELECT AVG(unit_price)
+          FROM purchase_details pd
+          WHERE pd.ingredient_id = i.ingredient_id
+        ), 0)), 0) as current_value
+      FROM ingredients i
+      WHERE status = 'Activo'
+    `
+
+    const result = await client.query(query)
+    const row = result.rows[0]
+
+    const compareQuery = `
+      SELECT
+        COUNT(*) as past_total,
+        0 as past_low_stock,
+        0 as past_value
+      FROM ingredients
+      WHERE status = 'Activo'
+    `
+
+    const compareResult = await client.query(compareQuery)
+    const compareRow = compareResult.rows[0]
+
+    return {
+      totalIngredients: {
+        current: parseInt(row.current_total),
+        vs30DaysAgo: {
+          value: parseInt(compareRow.past_total),
+          change: compareRow.past_total > 0
+            ? parseFloat(((row.current_total - compareRow.past_total) / compareRow.past_total * 100).toFixed(1))
+            : null
+        }
+      },
+      lowStockItems: {
+        current: parseInt(row.current_low_stock),
+        vs30DaysAgo: {
+          value: parseInt(compareRow.past_low_stock),
+          change: null
+        }
+      },
+      totalValue: {
+        current: parseFloat(row.current_value),
+        vs30DaysAgo: {
+          value: parseFloat(compareRow.past_value),
+          change: null
+        }
+      }
+    }
+  },
+
+  async _getDishesComparisons (client) {
+    const query = `
+      WITH current_month AS (
+        SELECT
+          d.dish_id,
+          d.name,
+          COALESCE(SUM(sd.quantity), 0) as quantity_sold,
+          COALESCE(SUM(sd.quantity * sd.unit_price), 0) as revenue
+        FROM dishes d
+        LEFT JOIN sale_details sd ON d.dish_id = sd.dish_id
+        LEFT JOIN sales s ON sd.sale_id = s.sale_id
+        WHERE s.status = 'Completed'
+          AND DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE)
+        GROUP BY d.dish_id, d.name
+        ORDER BY quantity_sold DESC
+        LIMIT 5
+      ),
+      last_month AS (
+        SELECT
+          d.dish_id,
+          d.name,
+          COALESCE(SUM(sd.quantity), 0) as quantity_sold,
+          COALESCE(SUM(sd.quantity * sd.unit_price), 0) as revenue
+        FROM dishes d
+        LEFT JOIN sale_details sd ON d.dish_id = sd.dish_id
+        LEFT JOIN sales s ON sd.sale_id = s.sale_id
+        WHERE s.status = 'Completed'
+          AND DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+        GROUP BY d.dish_id, d.name
+        ORDER BY quantity_sold DESC
+        LIMIT 5
+      )
+      SELECT
+        cm.dish_id,
+        cm.name,
+        cm.quantity_sold as current_quantity,
+        cm.revenue as current_revenue,
+        COALESCE(lm.quantity_sold, 0) as last_month_quantity,
+        COALESCE(lm.revenue, 0) as last_month_revenue,
+        CASE WHEN COALESCE(lm.quantity_sold, 0) > 0 
+          THEN ROUND(((cm.quantity_sold - lm.quantity_sold) / lm.quantity_sold * 100)::numeric, 1)
+          ELSE NULL 
+        END as quantity_change_percent,
+        CASE WHEN COALESCE(lm.revenue, 0) > 0 
+          THEN ROUND(((cm.revenue - lm.revenue) / lm.revenue * 100)::numeric, 1)
+          ELSE NULL 
+        END as revenue_change_percent
+      FROM current_month cm
+      LEFT JOIN last_month lm ON cm.dish_id = lm.dish_id
+      ORDER BY cm.quantity_sold DESC
+    `
+
+    const result = await client.query(query)
+
+    return {
+      topDishes: result.rows.map(row => ({
+        id: row.dish_id,
+        name: row.name,
+        currentMonth: {
+          quantitySold: parseInt(row.current_quantity),
+          revenue: parseFloat(row.current_revenue)
+        },
+        lastMonth: {
+          quantitySold: parseInt(row.last_month_quantity),
+          revenue: parseFloat(row.last_month_revenue)
+        },
+        change: {
+          quantityPercent: row.quantity_change_percent ? parseFloat(row.quantity_change_percent) : null,
+          revenuePercent: row.revenue_change_percent ? parseFloat(row.revenue_change_percent) : null
+        }
+      }))
+    }
+  },
+
+  async getSalesBreakdown () {
+    const client = await pool.connect()
+    try {
+      return await this._getSalesBreakdown(client)
+    } catch (error) {
+      console.error('Error fetching sales breakdown:', error)
+      throw new InternalServerError('Failed to fetch sales breakdown')
+    } finally {
+      client.release()
+    }
+  },
+
+  async _getSalesBreakdown (client) {
+    const query = `
+      WITH category_sales AS (
+        SELECT
+          dc.category_id,
+          dc.name as category_name,
+          dc.description,
+          COALESCE(SUM(CASE WHEN s.sale_date >= CURRENT_DATE - INTERVAL '6 days' THEN sd.quantity * sd.unit_price ELSE 0 END), 0) as week_revenue,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE) THEN sd.quantity * sd.unit_price ELSE 0 END), 0) as month_revenue,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', s.sale_date) = DATE_TRUNC('year', CURRENT_DATE) THEN sd.quantity * sd.unit_price ELSE 0 END), 0) as year_revenue,
+          COALESCE(SUM(CASE WHEN s.sale_date >= CURRENT_DATE - INTERVAL '6 days' THEN sd.quantity ELSE 0 END), 0) as week_quantity,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE) THEN sd.quantity ELSE 0 END), 0) as month_quantity,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', s.sale_date) = DATE_TRUNC('year', CURRENT_DATE) THEN sd.quantity ELSE 0 END), 0) as year_quantity,
+          COUNT(DISTINCT CASE WHEN s.sale_date >= CURRENT_DATE - INTERVAL '6 days' THEN d.dish_id END) as week_dishes_count,
+          COUNT(DISTINCT CASE WHEN DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE) THEN d.dish_id END) as month_dishes_count
+        FROM dish_categories dc
+        LEFT JOIN dishes d ON dc.category_id = d.category_id
+        LEFT JOIN sale_details sd ON d.dish_id = sd.dish_id
+        LEFT JOIN sales s ON sd.sale_id = s.sale_id
+        WHERE s.status = 'Completed' OR s.status IS NULL
+        GROUP BY dc.category_id, dc.name, dc.description
+      ),
+      totals AS (
+        SELECT
+          SUM(week_revenue) as total_week_revenue,
+          SUM(month_revenue) as total_month_revenue,
+          SUM(year_revenue) as total_year_revenue
+        FROM category_sales
+      )
+      SELECT
+        cs.*,
+        t.total_week_revenue,
+        t.total_month_revenue,
+        t.total_year_revenue,
+        CASE WHEN t.total_week_revenue > 0 THEN ROUND((cs.week_revenue / t.total_week_revenue * 100)::numeric, 1) ELSE 0 END as week_percentage,
+        CASE WHEN t.total_month_revenue > 0 THEN ROUND((cs.month_revenue / t.total_month_revenue * 100)::numeric, 1) ELSE 0 END as month_percentage,
+        CASE WHEN t.total_year_revenue > 0 THEN ROUND((cs.year_revenue / t.total_year_revenue * 100)::numeric, 1) ELSE 0 END as year_percentage
+      FROM category_sales cs
+      CROSS JOIN totals t
+      WHERE cs.month_revenue > 0 OR cs.week_revenue > 0 OR cs.year_revenue > 0
+      ORDER BY cs.month_revenue DESC
+    `
+
+    const result = await client.query(query)
+
+    return {
+      byCategory: result.rows.map(row => ({
+        categoryId: row.category_id,
+        categoryName: row.category_name,
+        description: row.description,
+        week: {
+          revenue: parseFloat(row.week_revenue),
+          quantity: parseInt(row.week_quantity),
+          dishesCount: parseInt(row.week_dishes_count),
+          percentage: parseFloat(row.week_percentage)
+        },
+        month: {
+          revenue: parseFloat(row.month_revenue),
+          quantity: parseInt(row.month_quantity),
+          dishesCount: parseInt(row.month_dishes_count),
+          percentage: parseFloat(row.month_percentage)
+        },
+        year: {
+          revenue: parseFloat(row.year_revenue),
+          quantity: parseInt(row.year_quantity),
+          percentage: parseFloat(row.year_percentage)
+        }
+      })),
+      totals: {
+        week: parseFloat(result.rows[0]?.total_week_revenue || 0),
+        month: parseFloat(result.rows[0]?.total_month_revenue || 0),
+        year: parseFloat(result.rows[0]?.total_year_revenue || 0)
+      }
+    }
+  },
+
+  async getPurchasesBreakdown () {
+    const client = await pool.connect()
+    try {
+      return await this._getPurchasesBreakdown(client)
+    } catch (error) {
+      console.error('Error fetching purchases breakdown:', error)
+      throw new InternalServerError('Failed to fetch purchases breakdown')
+    } finally {
+      client.release()
+    }
+  },
+
+  async _getPurchasesBreakdown (client) {
+    const query = `
+      WITH category_purchases AS (
+        SELECT
+          ic.category_id,
+          ic.name as category_name,
+          ic.description,
+          COALESCE(SUM(CASE WHEN p.purchase_date >= CURRENT_DATE - INTERVAL '6 days' THEN pd.quantity * pd.unit_price ELSE 0 END), 0) as week_cost,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', p.purchase_date) = DATE_TRUNC('month', CURRENT_DATE) THEN pd.quantity * pd.unit_price ELSE 0 END), 0) as month_cost,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', p.purchase_date) = DATE_TRUNC('year', CURRENT_DATE) THEN pd.quantity * pd.unit_price ELSE 0 END), 0) as year_cost,
+          COALESCE(SUM(CASE WHEN p.purchase_date >= CURRENT_DATE - INTERVAL '6 days' THEN pd.quantity ELSE 0 END), 0) as week_quantity,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', p.purchase_date) = DATE_TRUNC('month', CURRENT_DATE) THEN pd.quantity ELSE 0 END), 0) as month_quantity,
+          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', p.purchase_date) = DATE_TRUNC('year', CURRENT_DATE) THEN pd.quantity ELSE 0 END), 0) as year_quantity,
+          COUNT(DISTINCT CASE WHEN p.purchase_date >= CURRENT_DATE - INTERVAL '6 days' THEN i.ingredient_id END) as week_ingredients_count,
+          COUNT(DISTINCT CASE WHEN DATE_TRUNC('month', p.purchase_date) = DATE_TRUNC('month', CURRENT_DATE) THEN i.ingredient_id END) as month_ingredients_count
+        FROM ingredient_categories ic
+        LEFT JOIN ingredients i ON ic.category_id = i.category_id
+        LEFT JOIN purchase_details pd ON i.ingredient_id = pd.ingredient_id
+        LEFT JOIN purchases p ON pd.purchase_id = p.purchase_id
+        GROUP BY ic.category_id, ic.name, ic.description
+      ),
+      totals AS (
+        SELECT
+          SUM(week_cost) as total_week_cost,
+          SUM(month_cost) as total_month_cost,
+          SUM(year_cost) as total_year_cost
+        FROM category_purchases
+      )
+      SELECT
+        cp.*,
+        t.total_week_cost,
+        t.total_month_cost,
+        t.total_year_cost,
+        CASE WHEN t.total_week_cost > 0 THEN ROUND((cp.week_cost / t.total_week_cost * 100)::numeric, 1) ELSE 0 END as week_percentage,
+        CASE WHEN t.total_month_cost > 0 THEN ROUND((cp.month_cost / t.total_month_cost * 100)::numeric, 1) ELSE 0 END as month_percentage,
+        CASE WHEN t.total_year_cost > 0 THEN ROUND((cp.year_cost / t.total_year_cost * 100)::numeric, 1) ELSE 0 END as year_percentage
+      FROM category_purchases cp
+      CROSS JOIN totals t
+      WHERE cp.month_cost > 0 OR cp.week_cost > 0 OR cp.year_cost > 0
+      ORDER BY cp.month_cost DESC
+    `
+
+    const result = await client.query(query)
+
+    return {
+      byCategory: result.rows.map(row => ({
+        categoryId: row.category_id,
+        categoryName: row.category_name,
+        description: row.description,
+        week: {
+          cost: parseFloat(row.week_cost),
+          quantity: parseFloat(row.week_quantity),
+          ingredientsCount: parseInt(row.week_ingredients_count),
+          percentage: parseFloat(row.week_percentage)
+        },
+        month: {
+          cost: parseFloat(row.month_cost),
+          quantity: parseFloat(row.month_quantity),
+          ingredientsCount: parseInt(row.month_ingredients_count),
+          percentage: parseFloat(row.month_percentage)
+        },
+        year: {
+          cost: parseFloat(row.year_cost),
+          quantity: parseFloat(row.year_quantity),
+          percentage: parseFloat(row.year_percentage)
+        }
+      })),
+      totals: {
+        week: parseFloat(result.rows[0]?.total_week_cost || 0),
+        month: parseFloat(result.rows[0]?.total_month_cost || 0),
+        year: parseFloat(result.rows[0]?.total_year_cost || 0)
+      }
+    }
   }
 }

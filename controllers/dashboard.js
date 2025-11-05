@@ -52,15 +52,30 @@ export const DashboardController = {
       alerts: {
         url: `${baseUrl}/alerts`,
         method: 'GET',
-        description: 'Obtiene alertas inteligentes del sistema (stock bajo, ingredientes sin uso, caídas de ventas, sobrestock)'
+        description: 'Obtiene alertas inteligentes sobre stock bajo, ingredientes sin uso, caídas de ventas y sobrestock'
       },
       projections: {
         url: `${baseUrl}/projections`,
         method: 'GET',
-        description: 'Obtiene proyecciones de ventas, predicciones de stock y recomendaciones de compra',
+        description: 'Obtiene proyecciones de ventas y stock para los próximos días',
         params: {
           days: 'Número de días a proyectar (1-365). Por defecto: 30'
         }
+      },
+      comparisons: {
+        url: `${baseUrl}/comparisons`,
+        method: 'GET',
+        description: 'Obtiene comparaciones expandidas: período actual vs anterior y vs mismo período año anterior'
+      },
+      salesBreakdown: {
+        url: `${baseUrl}/breakdown/sales`,
+        method: 'GET',
+        description: 'Desglose de ventas por categoría de platos (semana, mes, año)'
+      },
+      purchasesBreakdown: {
+        url: `${baseUrl}/breakdown/purchases`,
+        method: 'GET',
+        description: 'Desglose de compras por categoría de ingredientes (semana, mes, año)'
       }
     }
 
@@ -218,6 +233,48 @@ export const DashboardController = {
         res,
         data: projections,
         message: 'Projections retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getComparisons (req, res) {
+    try {
+      const comparisons = await DashboardModel.getComparisons()
+
+      return handleResponse({
+        res,
+        data: comparisons,
+        message: 'Comparisons retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getSalesBreakdown (req, res) {
+    try {
+      const breakdown = await DashboardModel.getSalesBreakdown()
+
+      return handleResponse({
+        res,
+        data: breakdown,
+        message: 'Sales breakdown retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getPurchasesBreakdown (req, res) {
+    try {
+      const breakdown = await DashboardModel.getPurchasesBreakdown()
+
+      return handleResponse({
+        res,
+        data: breakdown,
+        message: 'Purchases breakdown retrieved successfully'
       })
     } catch (error) {
       return handleError({ res, status: error.statusCode || 500, error })
