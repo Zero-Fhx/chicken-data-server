@@ -18,11 +18,13 @@ API completa de estadísticas y análisis del dashboard para el sistema de gesti
 Lista todos los endpoints disponibles del dashboard con sus descripciones.
 
 **Request:**
+
 ```http
 GET /api/dashboard/
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -51,23 +53,39 @@ GET /api/dashboard/
 Obtiene todas las estadísticas del dashboard en un solo request.
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats
 ```
 
 **Response Structure:**
+
 ```json
 {
   "success": true,
   "message": "Dashboard statistics retrieved successfully",
   "data": {
-    "sales": { /* Estadísticas de ventas */ },
-    "purchases": { /* Estadísticas de compras */ },
-    "inventory": { /* Estado del inventario */ },
-    "dishes": { /* Estadísticas de platos */ },
-    "suppliers": { /* Información de proveedores */ },
-    "recentActivity": { /* Actividad reciente */ },
-    "financial": { /* Métricas financieras */ }
+    "sales": {
+      /* Estadísticas de ventas */
+    },
+    "purchases": {
+      /* Estadísticas de compras */
+    },
+    "inventory": {
+      /* Estado del inventario */
+    },
+    "dishes": {
+      /* Estadísticas de platos */
+    },
+    "suppliers": {
+      /* Información de proveedores */
+    },
+    "recentActivity": {
+      /* Actividad reciente */
+    },
+    "financial": {
+      /* Métricas financieras */
+    }
   },
   "timestamp": "2025-11-05T08:00:00.000Z"
 }
@@ -76,13 +94,14 @@ GET /api/dashboard/stats
 **Campos Detallados:**
 
 #### `sales` - Estadísticas de Ventas
+
 ```json
 {
   "today": {
-    "total": 74,           // Total vendido hoy (S/.)
-    "count": 2,            // Número de ventas
-    "average": 37,         // Promedio por venta
-    "growth": 604.8        // Crecimiento vs ayer (%)
+    "total": 74, // Total vendido hoy (S/.)
+    "count": 2, // Número de ventas
+    "average": 37, // Promedio por venta
+    "growth": 604.8 // Crecimiento vs ayer (%)
   },
   "week": {
     "total": 106.5,
@@ -103,6 +122,7 @@ GET /api/dashboard/stats
 ```
 
 #### `purchases` - Estadísticas de Compras
+
 ```json
 {
   "today": {
@@ -125,15 +145,16 @@ GET /api/dashboard/stats
 ```
 
 #### `inventory` - Estado del Inventario
+
 ```json
 {
-  "total": 22,             // Total de ingredientes
-  "active": 21,            // Ingredientes activos
-  "inactive": 1,           // Ingredientes inactivos
+  "total": 22, // Total de ingredientes
+  "active": 21, // Ingredientes activos
+  "inactive": 1, // Ingredientes inactivos
   "alerts": {
-    "lowStock": 5,         // Ingredientes con stock bajo
-    "outOfStock": 1,       // Ingredientes sin stock
-    "optimal": 16          // Ingredientes con stock óptimo
+    "lowStock": 5, // Ingredientes con stock bajo
+    "outOfStock": 1, // Ingredientes sin stock
+    "optimal": 16 // Ingredientes con stock óptimo
   },
   "criticalIngredients": [
     {
@@ -145,11 +166,12 @@ GET /api/dashboard/stats
       "stockPercentage": 0
     }
   ],
-  "totalValue": 2483.05    // Valor total del inventario (S/.)
+  "totalValue": 2483.05 // Valor total del inventario (S/.)
 }
 ```
 
 #### `dishes` - Estadísticas de Platos
+
 ```json
 {
   "total": 16,
@@ -175,6 +197,7 @@ GET /api/dashboard/stats
 ```
 
 #### `suppliers` - Información de Proveedores
+
 ```json
 {
   "total": 7,
@@ -192,6 +215,7 @@ GET /api/dashboard/stats
 ```
 
 #### `recentActivity` - Actividad Reciente
+
 ```json
 {
   "lastSale": {
@@ -218,25 +242,26 @@ GET /api/dashboard/stats
 ```
 
 #### `financial` - Métricas Financieras
+
 ```json
 {
   "profitMargin": {
-    "today": 100,          // Margen hoy (%)
-    "week": -33.3,         // Margen semanal (%)
-    "month": 42.4          // Margen mensual (%)
+    "today": 100, // Margen hoy (%)
+    "week": -33.3, // Margen semanal (%)
+    "month": 42.4 // Margen mensual (%)
   },
   "roi": {
-    "month": 73.6          // ROI mensual (%)
+    "month": 73.6 // ROI mensual (%)
   },
   "costs": {
-    "averageCostPerDish": 28.4,      // Costo promedio por plato (S/.)
-    "foodCostPercentage": 57.6       // % de costo de alimentos
+    "averageCostPerDish": 28.4, // Costo promedio por plato (S/.)
+    "foodCostPercentage": 57.6 // % de costo de alimentos
   },
   "profit": {
-    "today": 74,                      // Utilidad hoy (S/.)
-    "week": -35.5,                    // Utilidad semanal (S/.)
-    "month": 104.5,                   // Utilidad mensual (S/.)
-    "averageProfitPerDish": 20.9     // Utilidad promedio por plato (S/.)
+    "today": 74, // Utilidad hoy (S/.)
+    "week": -35.5, // Utilidad semanal (S/.)
+    "month": 104.5, // Utilidad mensual (S/.)
+    "averageProfitPerDish": 20.9 // Utilidad promedio por plato (S/.)
   }
 }
 ```
@@ -250,20 +275,30 @@ GET /api/dashboard/stats
 Obtiene solo las estadísticas de ventas.
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats/sales
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
   "message": "Sales statistics retrieved successfully",
   "data": {
-    "today": { /* ... */ },
-    "week": { /* ... */ },
-    "month": { /* ... */ },
-    "year": { /* ... */ }
+    "today": {
+      /* ... */
+    },
+    "week": {
+      /* ... */
+    },
+    "month": {
+      /* ... */
+    },
+    "year": {
+      /* ... */
+    }
   },
   "timestamp": "2025-11-05T08:00:00.000Z"
 }
@@ -274,6 +309,7 @@ GET /api/dashboard/stats/sales
 ### 4. Estadísticas de Compras
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats/purchases
 ```
@@ -283,6 +319,7 @@ GET /api/dashboard/stats/purchases
 ### 5. Estadísticas de Inventario
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats/inventory
 ```
@@ -292,6 +329,7 @@ GET /api/dashboard/stats/inventory
 ### 6. Estadísticas de Platos
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats/dishes
 ```
@@ -301,6 +339,7 @@ GET /api/dashboard/stats/dishes
 ### 7. Estadísticas de Proveedores
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats/suppliers
 ```
@@ -310,6 +349,7 @@ GET /api/dashboard/stats/suppliers
 ### 8. Actividad Reciente
 
 **Request:**
+
 ```http
 GET /api/dashboard/stats/activity
 ```
@@ -323,11 +363,13 @@ GET /api/dashboard/stats/activity
 Obtiene series temporales para visualización de tendencias.
 
 **Request:**
+
 ```http
 GET /api/dashboard/trends?period=7d&granularity=daily
 ```
 
 **Query Parameters:**
+
 - `period` (opcional): Período de tiempo. Formato: `{número}{unidad}`
   - Unidades: `d` (días), `w` (semanas), `m` (meses), `y` (años)
   - Ejemplos: `7d`, `4w`, `6m`, `1y`
@@ -337,6 +379,7 @@ GET /api/dashboard/trends?period=7d&granularity=daily
   - Default: `daily`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -384,11 +427,13 @@ GET /api/dashboard/trends?period=7d&granularity=daily
 Análisis automático de problemas y oportunidades.
 
 **Request:**
+
 ```http
 GET /api/dashboard/alerts
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -468,6 +513,7 @@ GET /api/dashboard/alerts
 ```
 
 **Tipos de Alertas:**
+
 - `out_of_stock` (crítico): Ingredientes sin stock
 - `low_stock` (advertencia): Stock por debajo del mínimo
 - `sales_drop` (advertencia): Caída significativa en ventas (>20%)
@@ -481,15 +527,18 @@ GET /api/dashboard/alerts
 Predicciones de ventas, stock y recomendaciones de compra.
 
 **Request:**
+
 ```http
 GET /api/dashboard/projections?days=30
 ```
 
 **Query Parameters:**
+
 - `days` (opcional): Número de días a proyectar (1-365)
   - Default: `30`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -541,11 +590,13 @@ GET /api/dashboard/projections?days=30
 ```
 
 **Estados de Stock:**
+
 - `critical`: Menos de 7 días de stock
 - `warning`: 7-14 días de stock
 - `ok`: Más de 14 días de stock
 
 **Prioridades de Compra:**
+
 - `urgent`: Sin stock o crítico
 - `normal`: Stock bajo pero todavía disponible
 
@@ -556,11 +607,13 @@ GET /api/dashboard/projections?days=30
 Comparaciones detalladas entre períodos actuales, anteriores y mismo período del año anterior.
 
 **Request:**
+
 ```http
 GET /api/dashboard/comparisons
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -609,10 +662,18 @@ GET /api/dashboard/comparisons
       }
     },
     "purchases": {
-      "today": { /* ... */ },
-      "week": { /* ... */ },
-      "month": { /* ... */ },
-      "year": { /* ... */ }
+      "today": {
+        /* ... */
+      },
+      "week": {
+        /* ... */
+      },
+      "month": {
+        /* ... */
+      },
+      "year": {
+        /* ... */
+      }
     },
     "inventory": {
       "totalIngredients": {
@@ -663,6 +724,7 @@ GET /api/dashboard/comparisons
 ```
 
 **Campos de Comparación:**
+
 - `current`: Valor del período actual
 - `value`: Valor del período de comparación
 - `change`: Porcentaje de cambio (positivo = crecimiento, negativo = decrecimiento)
@@ -675,11 +737,13 @@ GET /api/dashboard/comparisons
 Análisis de ventas desglosado por categorías de platos.
 
 **Request:**
+
 ```http
 GET /api/dashboard/breakdown/sales
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -742,6 +806,7 @@ GET /api/dashboard/breakdown/sales
 ```
 
 **Campos por Categoría:**
+
 - `revenue`: Ingresos totales de la categoría (S/.)
 - `quantity`: Cantidad total de platos vendidos
 - `dishesCount`: Número de platos diferentes vendidos de esa categoría
@@ -754,11 +819,13 @@ GET /api/dashboard/breakdown/sales
 Análisis de compras desglosado por categorías de ingredientes.
 
 **Request:**
+
 ```http
 GET /api/dashboard/breakdown/purchases
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -821,6 +888,7 @@ GET /api/dashboard/breakdown/purchases
 ```
 
 **Campos por Categoría:**
+
 - `cost`: Costo total de compras de la categoría (S/.)
 - `quantity`: Cantidad total comprada (en unidades variadas)
 - `ingredientsCount`: Número de ingredientes diferentes comprados de esa categoría
@@ -833,16 +901,20 @@ GET /api/dashboard/breakdown/purchases
 Todas las respuestas siguen el mismo formato estándar:
 
 ### Respuesta Exitosa
+
 ```json
 {
   "success": true,
   "message": "Mensaje descriptivo de la operación",
-  "data": { /* Datos solicitados */ },
+  "data": {
+    /* Datos solicitados */
+  },
   "timestamp": "2025-11-05T08:00:00.000Z"
 }
 ```
 
 ### Respuesta de Error
+
 ```json
 {
   "success": false,
@@ -882,40 +954,52 @@ Todas las respuestas siguen el mismo formato estándar:
 ## Casos de Uso
 
 ### Dashboard Principal
+
 ```http
 GET /api/dashboard/stats
 ```
+
 Obtiene todas las métricas clave en un solo request para mostrar el resumen ejecutivo completo.
 
 ### Gráficas de Tendencias
+
 ```http
 GET /api/dashboard/trends?period=30d&granularity=daily
 ```
+
 Obtiene datos históricos para visualizar tendencias en gráficas de líneas.
 
 ### Panel de Alertas
+
 ```http
 GET /api/dashboard/alerts
 ```
+
 Muestra notificaciones importantes que requieren atención inmediata.
 
 ### Planificación de Compras
+
 ```http
 GET /api/dashboard/projections?days=7
 ```
+
 Proyecta el consumo para planificar las compras de la próxima semana.
 
 ### Análisis de Rendimiento
+
 ```http
 GET /api/dashboard/comparisons
 ```
+
 Compara el rendimiento actual con períodos anteriores para identificar tendencias.
 
 ### Análisis por Categorías
+
 ```http
 GET /api/dashboard/breakdown/sales
 GET /api/dashboard/breakdown/purchases
 ```
+
 Identifica qué categorías de productos son más rentables o costosas.
 
 ---
@@ -923,28 +1007,33 @@ Identifica qué categorías de productos son más rentables o costosas.
 ## Ejemplos de Integración
 
 ### JavaScript (Fetch API)
+
 ```javascript
 // Obtener dashboard completo
-const response = await fetch('/api/dashboard/stats');
+const response = await fetch("/api/dashboard/stats");
 const data = await response.json();
 
 if (data.success) {
-  console.log('Ventas del mes:', data.data.sales.month.total);
-  console.log('Margen de utilidad:', data.data.financial.profitMargin.month + '%');
+  console.log("Ventas del mes:", data.data.sales.month.total);
+  console.log(
+    "Margen de utilidad:",
+    data.data.financial.profitMargin.month + "%",
+  );
 }
 
 // Obtener tendencias con parámetros
-const trends = await fetch('/api/dashboard/trends?period=7d&granularity=daily');
+const trends = await fetch("/api/dashboard/trends?period=7d&granularity=daily");
 const trendsData = await trends.json();
 
 // Obtener proyecciones
-const projections = await fetch('/api/dashboard/projections?days=14');
+const projections = await fetch("/api/dashboard/projections?days=14");
 const projectionsData = await projections.json();
 ```
 
 ### React Hook Ejemplo
+
 ```javascript
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 function useDashboard() {
   const [stats, setStats] = useState(null);
@@ -952,16 +1041,16 @@ function useDashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/dashboard/stats')
-      .then(res => res.json())
-      .then(data => {
+    fetch("/api/dashboard/stats")
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setStats(data.data);
         } else {
           setError(data.message);
         }
       })
-      .catch(err => setError(err.message))
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
