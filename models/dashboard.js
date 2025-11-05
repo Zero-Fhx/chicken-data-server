@@ -117,6 +117,40 @@ export const DashboardModel = {
     }
   },
 
+  async getAlerts () {
+    const client = await pool.connect()
+    try {
+      const alerts = {
+        critical: [],
+        warning: [],
+        info: []
+      }
+
+      const lowStock = await this._getLowStockAlerts(client)
+      const unusedIngredients = await this._getUnusedIngredientsAlerts(client)
+      const salesDrop = await this._getSalesDropAlerts(client)
+      const unnecessaryPurchases = await this._getUnnecessaryPurchasesAlerts(client)
+
+      alerts.critical.push(...lowStock.critical)
+      alerts.warning.push(...lowStock.warning, ...unusedIngredients, ...salesDrop)
+      alerts.info.push(...unnecessaryPurchases)
+
+      alerts.summary = {
+        total: alerts.critical.length + alerts.warning.length + alerts.info.length,
+        critical: alerts.critical.length,
+        warning: alerts.warning.length,
+        info: alerts.info.length
+      }
+
+      return alerts
+    } catch (error) {
+      console.error('Error fetching alerts:', error)
+      throw new InternalServerError('Failed to fetch alerts')
+    } finally {
+      client.release()
+    }
+  },
+
   async _getSalesStats (client) {
     try {
       const now = new Date()
@@ -691,10 +725,11 @@ export const DashboardModel = {
       SELECT 
         ${dateFormat} as period,
         COUNT(*)::int as count,
-        ROUND(CAST(SUM(total_amount) AS numeric), 2) as revenue
+        ROUND(CAST(SUM(total) AS numeric), 2) as revenue
       FROM sales
       WHERE created_at AT TIME ZONE 'UTC' >= $1
-        AND status != 'cancelled'
+        AND status != 'Cancelled'
+        AND deleted_at IS NULL
       GROUP BY period
       ORDER BY period ASC
     `
@@ -708,9 +743,10 @@ export const DashboardModel = {
       SELECT 
         ${dateFormat} as period,
         COUNT(*)::int as count,
-        ROUND(CAST(SUM(total_amount) AS numeric), 2) as cost
+        ROUND(CAST(SUM(total) AS numeric), 2) as cost
       FROM purchases
       WHERE created_at AT TIME ZONE 'UTC' >= $1
+        AND deleted_at IS NULL
       GROUP BY period
       ORDER BY period ASC
     `
@@ -719,28 +755,238 @@ export const DashboardModel = {
   },
 
   async _getInventoryTrends (client, startDate, granularity) {
-    const dateFormat = this._getDateFormat(granularity)
     const query = `
-      WITH inventory_snapshots AS (
+      WITH date_series AS (
+        SELECT generate_series(
+          DATE_TRUNC('day', $1::timestamp),
+          DATE_TRUNC('day', NOW()),
+          '1 day'::interval
+        )::date as period_date
+      ),
+      daily_inventory AS (
         SELECT 
-          ${dateFormat} as period,
+          ds.period_date,
           COUNT(DISTINCT i.id)::int as items_count,
-          ROUND(CAST(SUM(i.quantity * i.unit_cost) AS numeric), 2) as total_value,
+          ROUND(CAST(COALESCE(SUM(i.quantity * i.unit_cost), 0) AS numeric), 2) as total_value,
           COUNT(*) FILTER (WHERE i.quantity <= i.minimum_stock)::int as low_stock_count
-        FROM ingredients i
-        CROSS JOIN generate_series(
-          DATE_TRUNC('${this._getDateTrunc(granularity)}', $1::timestamp),
-          DATE_TRUNC('${this._getDateTrunc(granularity)}', NOW()),
-          '1 ${this._getDateTrunc(granularity)}'::interval
-        ) as period_date
-        WHERE i.created_at AT TIME ZONE 'UTC' <= period_date
-        GROUP BY period
+        FROM date_series ds
+        LEFT JOIN ingredients i ON i.created_at AT TIME ZONE 'UTC' <= ds.period_date
+        GROUP BY ds.period_date
       )
-      SELECT * FROM inventory_snapshots
-      ORDER BY period ASC
+      SELECT 
+        TO_CHAR(period_date, 'YYYY-MM-DD') as period,
+        items_count,
+        total_value,
+        low_stock_count
+      FROM daily_inventory
+      ORDER BY period_date ASC
     `
     const result = await client.query(query, [startDate])
     return result.rows
+  },
+
+  async _getLowStockAlerts (client) {
+    const query = `
+      SELECT 
+        i.id,
+        i.name,
+        i.quantity,
+        i.minimum_stock,
+        i.unit,
+        ROUND(CAST((i.quantity / NULLIF(i.minimum_stock, 0) * 100) AS numeric), 1) as stock_percentage
+      FROM ingredients i
+      WHERE i.quantity <= i.minimum_stock
+        AND i.minimum_stock > 0
+      ORDER BY stock_percentage ASC, i.quantity ASC
+    `
+    const result = await client.query(query)
+    
+    const critical = []
+    const warning = []
+
+    result.rows.forEach(row => {
+      const stockPercentage = parseFloat(row.stock_percentage) || 0
+      const alert = {
+        id: `low-stock-${row.id}`,
+        type: 'low_stock',
+        severity: stockPercentage <= 25 ? 'critical' : 'warning',
+        title: stockPercentage === 0 ? `Sin stock: ${row.name}` : `Stock bajo: ${row.name}`,
+        message: `${row.quantity} ${row.unit} disponibles (mínimo: ${row.minimum_stock} ${row.unit})`,
+        data: {
+          ingredientId: row.id,
+          ingredientName: row.name,
+          currentStock: parseFloat(row.quantity),
+          minimumStock: parseFloat(row.minimum_stock),
+          unit: row.unit,
+          stockPercentage
+        },
+        action: 'Realizar compra urgente',
+        timestamp: new Date().toISOString()
+      }
+
+      if (stockPercentage <= 25) {
+        critical.push(alert)
+      } else {
+        warning.push(alert)
+      }
+    })
+
+    return { critical, warning }
+  },
+
+  async _getUnusedIngredientsAlerts (client) {
+    const query = `
+      SELECT 
+        i.id,
+        i.name,
+        i.quantity,
+        i.unit,
+        ROUND(CAST(i.quantity * i.unit_cost AS numeric), 2) as stock_value,
+        COALESCE(
+          EXTRACT(EPOCH FROM (NOW() - MAX(p.created_at AT TIME ZONE 'UTC'))) / 86400,
+          999
+        )::int as days_since_last_purchase,
+        COUNT(DISTINCT di.dish_id)::int as used_in_dishes
+      FROM ingredients i
+      LEFT JOIN purchases p ON p.ingredient_id = i.id
+      LEFT JOIN dish_ingredients di ON di.ingredient_id = i.id
+      WHERE i.quantity > 0
+      GROUP BY i.id, i.name, i.quantity, i.unit, i.unit_cost
+      HAVING COUNT(DISTINCT di.dish_id) = 0
+      ORDER BY stock_value DESC
+      LIMIT 10
+    `
+    const result = await client.query(query)
+    
+    return result.rows.map(row => ({
+      id: `unused-ingredient-${row.id}`,
+      type: 'unused_ingredient',
+      severity: 'warning',
+      title: `Ingrediente sin uso: ${row.name}`,
+      message: `No está asignado a ningún platillo (valor en stock: $${row.stock_value})`,
+      data: {
+        ingredientId: row.id,
+        ingredientName: row.name,
+        quantity: parseFloat(row.quantity),
+        unit: row.unit,
+        stockValue: parseFloat(row.stock_value),
+        daysSinceLastPurchase: row.days_since_last_purchase,
+        usedInDishes: row.used_in_dishes
+      },
+      action: 'Asignar a platillos o considerar eliminar',
+      timestamp: new Date().toISOString()
+    }))
+  },
+
+  async _getSalesDropAlerts (client) {
+    const query = `
+      WITH weekly_sales AS (
+        SELECT 
+          DATE_TRUNC('week', created_at AT TIME ZONE 'UTC') as week,
+          COUNT(*)::int as sales_count,
+          ROUND(CAST(SUM(total) AS numeric), 2) as revenue
+        FROM sales
+        WHERE created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '8 weeks'
+          AND status != 'Cancelled'
+          AND deleted_at IS NULL
+        GROUP BY week
+        ORDER BY week DESC
+      ),
+      averages AS (
+        SELECT 
+          AVG(sales_count) as avg_count,
+          AVG(revenue) as avg_revenue
+        FROM weekly_sales
+        OFFSET 1
+      )
+      SELECT 
+        ws.week,
+        ws.sales_count,
+        ws.revenue,
+        a.avg_count,
+        a.avg_revenue,
+        ROUND(CAST(((ws.sales_count - a.avg_count) / NULLIF(a.avg_count, 0) * 100) AS numeric), 1) as count_change_pct,
+        ROUND(CAST(((ws.revenue - a.avg_revenue) / NULLIF(a.avg_revenue, 0) * 100) AS numeric), 1) as revenue_change_pct
+      FROM weekly_sales ws, averages a
+      WHERE ws.week = (SELECT MAX(week) FROM weekly_sales)
+        AND (
+          (ws.sales_count < a.avg_count * 0.7)
+          OR (ws.revenue < a.avg_revenue * 0.7)
+        )
+    `
+    const result = await client.query(query)
+    
+    return result.rows.map(row => ({
+      id: 'sales-drop-current-week',
+      type: 'sales_drop',
+      severity: 'warning',
+      title: 'Caída en ventas detectada',
+      message: `Las ventas de esta semana están ${Math.abs(parseFloat(row.count_change_pct))}% por debajo del promedio`,
+      data: {
+        currentWeek: {
+          salesCount: row.sales_count,
+          revenue: parseFloat(row.revenue)
+        },
+        average: {
+          salesCount: Math.round(parseFloat(row.avg_count) * 100) / 100,
+          revenue: Math.round(parseFloat(row.avg_revenue) * 100) / 100
+        },
+        changePercentage: {
+          count: parseFloat(row.count_change_pct),
+          revenue: parseFloat(row.revenue_change_pct)
+        }
+      },
+      action: 'Revisar estrategia de ventas y promociones',
+      timestamp: new Date().toISOString()
+    }))
+  },
+
+  async _getUnnecessaryPurchasesAlerts (client) {
+    const query = `
+      SELECT 
+        i.id,
+        i.name,
+        i.quantity,
+        i.minimum_stock,
+        i.unit,
+        ROUND(CAST(i.quantity * i.unit_cost AS numeric), 2) as stock_value,
+        ROUND(CAST((i.quantity / NULLIF(i.minimum_stock, 0)) AS numeric), 1) as stock_ratio,
+        COALESCE(
+          ROUND(CAST(AVG(p.quantity) AS numeric), 2),
+          0
+        ) as avg_purchase_quantity,
+        COUNT(p.id)::int as purchase_count_last_90_days
+      FROM ingredients i
+      LEFT JOIN purchases p ON p.ingredient_id = i.id 
+        AND p.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
+      WHERE i.quantity > i.minimum_stock * 3
+        AND i.minimum_stock > 0
+      GROUP BY i.id, i.name, i.quantity, i.minimum_stock, i.unit, i.unit_cost
+      ORDER BY stock_ratio DESC
+      LIMIT 10
+    `
+    const result = await client.query(query)
+    
+    return result.rows.map(row => ({
+      id: `overstock-${row.id}`,
+      type: 'overstock',
+      severity: 'info',
+      title: `Sobrestock: ${row.name}`,
+      message: `Stock actual es ${parseFloat(row.stock_ratio)}x el mínimo requerido (valor: $${row.stock_value})`,
+      data: {
+        ingredientId: row.id,
+        ingredientName: row.name,
+        currentStock: parseFloat(row.quantity),
+        minimumStock: parseFloat(row.minimum_stock),
+        unit: row.unit,
+        stockValue: parseFloat(row.stock_value),
+        stockRatio: parseFloat(row.stock_ratio),
+        avgPurchaseQuantity: parseFloat(row.avg_purchase_quantity),
+        recentPurchases: row.purchase_count_last_90_days
+      },
+      action: 'Reducir cantidad en próximas compras',
+      timestamp: new Date().toISOString()
+    }))
   },
 
   _parsePeriod (period) {

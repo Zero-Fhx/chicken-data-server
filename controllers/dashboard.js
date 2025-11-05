@@ -48,6 +48,11 @@ export const DashboardController = {
           period: 'Período de tiempo (ej: 7d, 4w, 6m, 1y). Por defecto: 7d',
           granularity: 'Granularidad de los datos (hourly, daily, weekly, monthly, yearly). Por defecto: daily'
         }
+      },
+      alerts: {
+        url: `${baseUrl}/alerts`,
+        method: 'GET',
+        description: 'Obtiene alertas inteligentes del sistema (stock bajo, ingredientes sin uso, caídas de ventas, sobrestock)'
       }
     }
 
@@ -166,6 +171,20 @@ export const DashboardController = {
         res,
         data: trends,
         message: 'Trends data retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getAlerts (req, res) {
+    try {
+      const alerts = await DashboardModel.getAlerts()
+
+      return handleResponse({
+        res,
+        data: alerts,
+        message: 'Alerts retrieved successfully'
       })
     } catch (error) {
       return handleError({ res, status: error.statusCode || 500, error })
