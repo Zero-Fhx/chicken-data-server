@@ -1225,26 +1225,24 @@ export const DashboardModel = {
 
     const query = `
       SELECT 
-        COALESCE(SUM(CASE WHEN s.sale_date >= $1 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN s.total ELSE 0 END), 0) as today_sales,
-        COALESCE(SUM(CASE WHEN p.purchase_date >= $1 AND p.deleted_at IS NULL THEN p.total ELSE 0 END), 0) as today_purchases,
+        (SELECT COALESCE(SUM(total), 0) FROM sales WHERE sale_date >= $1 AND status = 'Completed' AND deleted_at IS NULL) as today_sales,
+        (SELECT COALESCE(SUM(total), 0) FROM purchases WHERE purchase_date >= $1 AND deleted_at IS NULL) as today_purchases,
         
-        COALESCE(SUM(CASE WHEN s.sale_date >= $2 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN s.total ELSE 0 END), 0) as week_sales,
-        COALESCE(SUM(CASE WHEN p.purchase_date >= $2 AND p.deleted_at IS NULL THEN p.total ELSE 0 END), 0) as week_purchases,
+        (SELECT COALESCE(SUM(total), 0) FROM sales WHERE sale_date >= $2 AND status = 'Completed' AND deleted_at IS NULL) as week_sales,
+        (SELECT COALESCE(SUM(total), 0) FROM purchases WHERE purchase_date >= $2 AND deleted_at IS NULL) as week_purchases,
         
-        COALESCE(SUM(CASE WHEN s.sale_date >= $3 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN s.total ELSE 0 END), 0) as month_sales,
-        COALESCE(SUM(CASE WHEN p.purchase_date >= $3 AND p.deleted_at IS NULL THEN p.total ELSE 0 END), 0) as month_purchases,
+        (SELECT COALESCE(SUM(total), 0) FROM sales WHERE sale_date >= $3 AND status = 'Completed' AND deleted_at IS NULL) as month_sales,
+        (SELECT COALESCE(SUM(total), 0) FROM purchases WHERE purchase_date >= $3 AND deleted_at IS NULL) as month_purchases,
         
-        COALESCE(COUNT(CASE WHEN s.sale_date >= $1 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN 1 END), 0) as today_orders,
-        COALESCE(COUNT(CASE WHEN s.sale_date >= $2 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN 1 END), 0) as week_orders,
-        COALESCE(COUNT(CASE WHEN s.sale_date >= $3 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN 1 END), 0) as month_orders
-      FROM sales s
-      FULL OUTER JOIN purchases p ON 1=1
+        (SELECT COALESCE(COUNT(*), 0) FROM sales WHERE sale_date >= $1 AND status = 'Completed' AND deleted_at IS NULL) as today_orders,
+        (SELECT COALESCE(COUNT(*), 0) FROM sales WHERE sale_date >= $2 AND status = 'Completed' AND deleted_at IS NULL) as week_orders,
+        (SELECT COALESCE(COUNT(*), 0) FROM sales WHERE sale_date >= $3 AND status = 'Completed' AND deleted_at IS NULL) as month_orders
     `
 
     const result = await client.query(query, [
-      todayStart.toISOString(),
-      weekStart.toISOString(),
-      monthStart.toISOString()
+      todayStart.toISOString().split('T')[0],
+      weekStart.toISOString().split('T')[0],
+      monthStart.toISOString().split('T')[0]
     ])
 
     const row = result.rows[0]
