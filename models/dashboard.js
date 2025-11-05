@@ -894,7 +894,7 @@ export const DashboardModel = {
       type: 'unused_ingredient',
       severity: 'warning',
       title: `Ingrediente sin uso: ${row.name}`,
-      message: `No está asignado a ningún platillo (valor en stock: $${row.stock_value})`,
+      message: `No está asignado a ningún platillo (valor en stock: S/. ${row.stock_value})`,
       data: {
         ingredientId: row.ingredient_id,
         ingredientName: row.name,
@@ -1020,7 +1020,7 @@ export const DashboardModel = {
       type: 'overstock',
       severity: 'info',
       title: `Sobrestock: ${row.name}`,
-      message: `Stock actual es ${parseFloat(row.stock_ratio)}x el mínimo requerido (valor: $${row.stock_value})`,
+      message: `Stock actual es ${parseFloat(row.stock_ratio)}x el mínimo requerido (valor: S/. ${row.stock_value})`,
       data: {
         ingredientId: row.ingredient_id,
         ingredientName: row.name,
