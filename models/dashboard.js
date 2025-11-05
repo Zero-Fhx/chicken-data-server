@@ -1119,13 +1119,13 @@ export const DashboardModel = {
             0
           ) as avg_unit_price,
           COALESCE(
-            SUM(di.quantity_used * s.quantity) / 
-            NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
+            SUM(di.quantity_used * sd.quantity) / 
+            NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at AT TIME ZONE 'UTC') - MIN(s.created_at AT TIME ZONE 'UTC'))) / 86400, 0),
             0
           ) as daily_usage
         FROM ingredients i
         LEFT JOIN dish_ingredients di ON di.ingredient_id = i.ingredient_id
-        LEFT JOIN sale_details sd ON sd.dish_id = di.dish_id
+        LEFT JOIN sale_details sd ON sd.dish_id = di.dish_id AND sd.deleted_at IS NULL
         LEFT JOIN sales s ON s.sale_id = sd.sale_id 
           AND s.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '60 days'
           AND s.status != 'Cancelled'
@@ -1134,8 +1134,8 @@ export const DashboardModel = {
           AND i.stock > 0
         GROUP BY i.ingredient_id, i.name, i.stock, i.minimum_stock, i.unit
         HAVING COALESCE(
-          SUM(di.quantity_used * s.quantity) / 
-          NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
+          SUM(di.quantity_used * sd.quantity) / 
+          NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at AT TIME ZONE 'UTC') - MIN(s.created_at AT TIME ZONE 'UTC'))) / 86400, 0),
           0
         ) > 0
       )
