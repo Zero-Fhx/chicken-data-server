@@ -4,6 +4,7 @@ import express from 'express'
 import logger from 'morgan'
 import { testConnection } from './config/database.js'
 
+import { DashboardRouter } from './routes/dashboard.js'
 import { DishCategoriesRouter } from './routes/dishCategories.js'
 import { DishesRouter } from './routes/dishes.js'
 import { DishIngredientsRouter } from './routes/dishIngredients.js'
@@ -29,6 +30,7 @@ app.get('/favicon.ico', (req, res) => {
 
 const ENDPOINTS = {
   Health: '/health',
+  Dashboard: '/api/dashboard',
   Dishes: '/api/dishes',
   DishCategories: '/api/dish-categories',
   Suppliers: '/api/suppliers',
@@ -43,6 +45,7 @@ app.get('/', (req, res) => {
     message: 'Chicken Data API',
     endpoints: {
       health: ENDPOINTS.Health,
+      dashboard: ENDPOINTS.Dashboard,
       dishes: {
         list: ENDPOINTS.Dishes,
         categories: ENDPOINTS.DishCategories
@@ -81,6 +84,7 @@ app.get('/endpoints', (req, res) => {
     message: 'Available API endpoints - Chicken Data API',
     endpoints: {
       health: ENDPOINTS.Health,
+      dashboard: ENDPOINTS.Dashboard,
       dishes: {
         list: ENDPOINTS.Dishes,
         categories: ENDPOINTS.DishCategories
@@ -104,6 +108,7 @@ app.use('/api/ingredients', IngredientsRouter)
 app.use('/api/ingredient-categories', IngredientCategoriesRouter)
 app.use('/api/purchases', PurchasesRouter)
 app.use('/api/sales', SalesRouter)
+app.use('/api/dashboard', DashboardRouter)
 
 app.use((req, res) => {
   res.status(404).json({
@@ -111,6 +116,7 @@ app.use((req, res) => {
     message: 'Endpoint no encontrado',
     availableEndpoints: {
       health: ENDPOINTS.Health,
+      dashboard: ENDPOINTS.Dashboard,
       dishes: {
         list: ENDPOINTS.Dishes,
         categories: ENDPOINTS.DishCategories
