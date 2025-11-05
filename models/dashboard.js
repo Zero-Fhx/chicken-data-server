@@ -11,7 +11,8 @@ export const DashboardModel = {
         inventory: await this._getInventoryStats(client),
         dishes: await this._getDishesStats(client),
         suppliers: await this._getSuppliersStats(client),
-        recentActivity: await this._getRecentActivity(client)
+        recentActivity: await this._getRecentActivity(client),
+        financial: await this._getFinancialMetrics(client)
       }
 
       return stats
@@ -1213,6 +1214,68 @@ export const DashboardModel = {
       date: date.toISOString().split('T')[0],
       daysFromNow: recommendedDays,
       reason: `El ingrediente ${projections[0].ingredientName} se agotará en ${Math.round(nearestDepletion)} días`
+    }
+  },
+
+  async _getFinancialMetrics (client) {
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekStart = this._getWeekStart(now)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const query = `
+      SELECT 
+        COALESCE(SUM(CASE WHEN s.sale_date >= $1 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN s.total ELSE 0 END), 0) as today_sales,
+        COALESCE(SUM(CASE WHEN p.purchase_date >= $1 AND p.deleted_at IS NULL THEN p.total ELSE 0 END), 0) as today_purchases,
+        
+        COALESCE(SUM(CASE WHEN s.sale_date >= $2 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN s.total ELSE 0 END), 0) as week_sales,
+        COALESCE(SUM(CASE WHEN p.purchase_date >= $2 AND p.deleted_at IS NULL THEN p.total ELSE 0 END), 0) as week_purchases,
+        
+        COALESCE(SUM(CASE WHEN s.sale_date >= $3 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN s.total ELSE 0 END), 0) as month_sales,
+        COALESCE(SUM(CASE WHEN p.purchase_date >= $3 AND p.deleted_at IS NULL THEN p.total ELSE 0 END), 0) as month_purchases,
+        
+        COALESCE(COUNT(CASE WHEN s.sale_date >= $1 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN 1 END), 0) as today_orders,
+        COALESCE(COUNT(CASE WHEN s.sale_date >= $2 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN 1 END), 0) as week_orders,
+        COALESCE(COUNT(CASE WHEN s.sale_date >= $3 AND s.status = 'Completed' AND s.deleted_at IS NULL THEN 1 END), 0) as month_orders
+      FROM sales s
+      FULL OUTER JOIN purchases p ON 1=1
+    `
+
+    const result = await client.query(query, [
+      todayStart.toISOString(),
+      weekStart.toISOString(),
+      monthStart.toISOString()
+    ])
+
+    const row = result.rows[0]
+
+    const todaySales = parseFloat(row.today_sales) || 0
+    const todayPurchases = parseFloat(row.today_purchases) || 0
+    const weekSales = parseFloat(row.week_sales) || 0
+    const weekPurchases = parseFloat(row.week_purchases) || 0
+    const monthSales = parseFloat(row.month_sales) || 0
+    const monthPurchases = parseFloat(row.month_purchases) || 0
+    const monthOrders = parseInt(row.month_orders) || 0
+
+    return {
+      profitMargin: {
+        today: todaySales > 0 ? Math.round(((todaySales - todayPurchases) / todaySales * 100) * 10) / 10 : 0,
+        week: weekSales > 0 ? Math.round(((weekSales - weekPurchases) / weekSales * 100) * 10) / 10 : 0,
+        month: monthSales > 0 ? Math.round(((monthSales - monthPurchases) / monthSales * 100) * 10) / 10 : 0
+      },
+      roi: {
+        month: monthPurchases > 0 ? Math.round(((monthSales - monthPurchases) / monthPurchases * 100) * 10) / 10 : 0
+      },
+      costs: {
+        averageCostPerDish: monthOrders > 0 ? Math.round((monthPurchases / monthOrders) * 100) / 100 : 0,
+        foodCostPercentage: monthSales > 0 ? Math.round((monthPurchases / monthSales * 100) * 10) / 10 : 0
+      },
+      profit: {
+        today: Math.round((todaySales - todayPurchases) * 100) / 100,
+        week: Math.round((weekSales - weekPurchases) * 100) / 100,
+        month: Math.round((monthSales - monthPurchases) * 100) / 100,
+        averageProfitPerDish: monthOrders > 0 ? Math.round(((monthSales - monthPurchases) / monthOrders) * 100) / 100 : 0
+      }
     }
   },
 
