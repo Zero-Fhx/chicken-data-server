@@ -45,22 +45,18 @@ export const DashboardModel = {
 
       const currentQuery = `
         SELECT 
-          -- Día actual
           COALESCE(SUM(CASE WHEN sale_date >= $1 THEN total ELSE 0 END), 0) as day_total,
           COALESCE(COUNT(CASE WHEN sale_date >= $1 THEN 1 END), 0) as day_count,
           COALESCE(AVG(CASE WHEN sale_date >= $1 THEN total END), 0) as day_average,
           
-          -- Semana actual
           COALESCE(SUM(CASE WHEN sale_date >= $2 THEN total ELSE 0 END), 0) as week_total,
           COALESCE(COUNT(CASE WHEN sale_date >= $2 THEN 1 END), 0) as week_count,
           COALESCE(AVG(CASE WHEN sale_date >= $2 THEN total END), 0) as week_average,
           
-          -- Mes actual
           COALESCE(SUM(CASE WHEN sale_date >= $3 THEN total ELSE 0 END), 0) as month_total,
           COALESCE(COUNT(CASE WHEN sale_date >= $3 THEN 1 END), 0) as month_count,
           COALESCE(AVG(CASE WHEN sale_date >= $3 THEN total END), 0) as month_average,
           
-          -- Año actual
           COALESCE(SUM(CASE WHEN sale_date >= $4 THEN total ELSE 0 END), 0) as year_total
         FROM sales
         WHERE deleted_at IS NULL
@@ -76,13 +72,10 @@ export const DashboardModel = {
 
       const previousQuery = `
         SELECT 
-          -- Día anterior
           COALESCE(SUM(CASE WHEN sale_date >= $1 AND sale_date < $2 THEN total ELSE 0 END), 0) as yesterday_total,
           
-          -- Semana anterior
           COALESCE(SUM(CASE WHEN sale_date >= $3 AND sale_date < $4 THEN total ELSE 0 END), 0) as last_week_total,
           
-          -- Mes anterior
           COALESCE(SUM(CASE WHEN sale_date >= $5 AND sale_date < $6 THEN total ELSE 0 END), 0) as last_month_total
         FROM sales
         WHERE deleted_at IS NULL
@@ -116,25 +109,25 @@ export const DashboardModel = {
 
       return {
         today: {
-          total: parseFloat(current.day_total).toFixed(2),
+          total: Math.round(parseFloat(current.day_total) * 100) / 100,
           count: parseInt(current.day_count),
-          average: parseFloat(current.day_average).toFixed(2),
+          average: Math.round(parseFloat(current.day_average) * 100) / 100,
           growth: dayGrowth
         },
         week: {
-          total: parseFloat(current.week_total).toFixed(2),
+          total: Math.round(parseFloat(current.week_total) * 100) / 100,
           count: parseInt(current.week_count),
-          average: parseFloat(current.week_average).toFixed(2),
+          average: Math.round(parseFloat(current.week_average) * 100) / 100,
           growth: weekGrowth
         },
         month: {
-          total: parseFloat(current.month_total).toFixed(2),
+          total: Math.round(parseFloat(current.month_total) * 100) / 100,
           count: parseInt(current.month_count),
-          average: parseFloat(current.month_average).toFixed(2),
+          average: Math.round(parseFloat(current.month_average) * 100) / 100,
           growth: monthGrowth
         },
         year: {
-          total: parseFloat(current.year_total).toFixed(2)
+          total: Math.round(parseFloat(current.year_total) * 100) / 100
         }
       }
     } catch (error) {
@@ -157,22 +150,17 @@ export const DashboardModel = {
 
       const query = `
         SELECT 
-          -- Día actual
           COALESCE(SUM(CASE WHEN purchase_date >= $1 THEN total ELSE 0 END), 0) as day_total,
           COALESCE(COUNT(CASE WHEN purchase_date >= $1 THEN 1 END), 0) as day_count,
           
-          -- Semana actual
           COALESCE(SUM(CASE WHEN purchase_date >= $2 THEN total ELSE 0 END), 0) as week_total,
           COALESCE(COUNT(CASE WHEN purchase_date >= $2 THEN 1 END), 0) as week_count,
           
-          -- Mes actual
           COALESCE(SUM(CASE WHEN purchase_date >= $3 THEN total ELSE 0 END), 0) as month_total,
           COALESCE(COUNT(CASE WHEN purchase_date >= $3 THEN 1 END), 0) as month_count,
           
-          -- Año actual
           COALESCE(SUM(CASE WHEN purchase_date >= $4 THEN total ELSE 0 END), 0) as year_total,
           
-          -- Mes anterior
           COALESCE(SUM(CASE WHEN purchase_date >= $5 AND purchase_date < $6 THEN total ELSE 0 END), 0) as last_month_total
         FROM purchases
         WHERE deleted_at IS NULL
@@ -197,20 +185,20 @@ export const DashboardModel = {
 
       return {
         today: {
-          total: parseFloat(data.day_total).toFixed(2),
+          total: Math.round(parseFloat(data.day_total) * 100) / 100,
           count: parseInt(data.day_count)
         },
         week: {
-          total: parseFloat(data.week_total).toFixed(2),
+          total: Math.round(parseFloat(data.week_total) * 100) / 100,
           count: parseInt(data.week_count)
         },
         month: {
-          total: parseFloat(data.month_total).toFixed(2),
+          total: Math.round(parseFloat(data.month_total) * 100) / 100,
           count: parseInt(data.month_count),
           growth: monthGrowth
         },
         year: {
-          total: parseFloat(data.year_total).toFixed(2)
+          total: Math.round(parseFloat(data.year_total) * 100) / 100
         }
       }
     } catch (error) {
@@ -276,8 +264,8 @@ export const DashboardModel = {
       const critical = criticalResult.rows.map(row => ({
         id: row.ingredient_id,
         name: row.name,
-        currentStock: parseFloat(row.stock).toFixed(2),
-        minimumStock: parseFloat(row.minimum_stock).toFixed(2),
+        currentStock: Math.round(parseFloat(row.stock) * 100) / 100,
+        minimumStock: Math.round(parseFloat(row.minimum_stock) * 100) / 100,
         unit: row.unit,
         stockPercentage: parseFloat(row.stock_percentage)
       }))
@@ -292,7 +280,7 @@ export const DashboardModel = {
           optimal: parseInt(counts.optimal_stock)
         },
         criticalIngredients: critical,
-        totalValue: parseFloat(valueResult.rows[0].total_value).toFixed(2)
+        totalValue: Math.round(parseFloat(valueResult.rows[0].total_value) * 100) / 100
       }
     } catch (error) {
       console.error('Error fetching inventory stats:', error)
@@ -375,7 +363,7 @@ export const DashboardModel = {
           id: row.dish_id,
           name: row.name,
           quantitySold: parseInt(row.total_sold),
-          revenue: parseFloat(row.total_revenue).toFixed(2),
+          revenue: Math.round(parseFloat(row.total_revenue) * 100) / 100,
           revenuePercentage: parseFloat(row.revenue_percentage || 0)
         })),
         leastSelling: leastResult.rows.map(row => ({
@@ -435,7 +423,7 @@ export const DashboardModel = {
           id: row.supplier_id,
           name: row.name,
           purchaseCount: parseInt(row.purchase_count),
-          totalSpent: parseFloat(row.total_spent).toFixed(2)
+          totalSpent: Math.round(parseFloat(row.total_spent) * 100) / 100
         }))
       }
     } catch (error) {
@@ -452,7 +440,7 @@ export const DashboardModel = {
       const lastQuery = `
         SELECT 
           (
-            SELECT created_at
+            SELECT created_at AT TIME ZONE 'UTC'
             FROM sales
             WHERE deleted_at IS NULL
               AND status = 'Completed'
@@ -460,7 +448,7 @@ export const DashboardModel = {
             LIMIT 1
           ) as last_sale,
           (
-            SELECT created_at
+            SELECT created_at AT TIME ZONE 'UTC'
             FROM purchases
             WHERE deleted_at IS NULL
               AND status = 'Completed'
@@ -506,17 +494,24 @@ export const DashboardModel = {
 
       const lastData = lastResult.rows[0]
 
+      const lastSaleTime = lastData.last_sale ? this._getTimeAgo(lastData.last_sale) : null
+      const lastPurchaseTime = lastData.last_purchase ? this._getTimeAgo(lastData.last_purchase) : null
+
       return {
         lastSale: lastData.last_sale
           ? {
               timestamp: lastData.last_sale,
-              timeAgo: this._getTimeAgo(lastData.last_sale)
+              timeAgo: lastSaleTime.text,
+              timeValue: lastSaleTime.value,
+              timeUnit: lastSaleTime.unit
             }
           : null,
         lastPurchase: lastData.last_purchase
           ? {
               timestamp: lastData.last_purchase,
-              timeAgo: this._getTimeAgo(lastData.last_purchase)
+              timeAgo: lastPurchaseTime.text,
+              timeValue: lastPurchaseTime.value,
+              timeUnit: lastPurchaseTime.unit
             }
           : null,
         today: {
@@ -525,7 +520,7 @@ export const DashboardModel = {
             ? {
                 id: topIngredientResult.rows[0].ingredient_id,
                 name: topIngredientResult.rows[0].name,
-                quantityUsed: parseFloat(topIngredientResult.rows[0].total_used).toFixed(2)
+                quantityUsed: Math.round(parseFloat(topIngredientResult.rows[0].total_used) * 100) / 100
               }
             : null
         }
@@ -552,20 +547,47 @@ export const DashboardModel = {
   },
 
   _getTimeAgo (timestamp) {
-    const now = new Date()
-    const past = new Date(timestamp)
-    const diffMs = now - past
+    const now = Date.now()
+    const past = new Date(timestamp).getTime()
+    const diffMs = Math.max(0, now - past)
 
+    const seconds = Math.floor(diffMs / 1000)
     const minutes = Math.floor(diffMs / (1000 * 60))
     const hours = Math.floor(diffMs / (1000 * 60 * 60))
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-    if (minutes < 1) return 'hace menos de un minuto'
-    if (minutes === 1) return 'hace 1 minuto'
-    if (minutes < 60) return `hace ${minutes} minutos`
-    if (hours === 1) return 'hace 1 hora'
-    if (hours < 24) return `hace ${hours} horas`
-    if (days === 1) return 'hace 1 día'
-    return `hace ${days} días`
+    let text, value, unit
+
+    if (seconds < 60) {
+      text = seconds < 5 ? 'hace menos de un minuto' : `hace ${seconds} segundos`
+      value = seconds
+      unit = 'seconds'
+    } else if (minutes === 1) {
+      text = 'hace 1 minuto'
+      value = 1
+      unit = 'minutes'
+    } else if (minutes < 60) {
+      text = `hace ${minutes} minutos`
+      value = minutes
+      unit = 'minutes'
+    } else if (hours === 1) {
+      text = 'hace 1 hora'
+      value = 1
+      unit = 'hours'
+    } else if (hours < 24) {
+      text = `hace ${hours} horas`
+      value = hours
+      unit = 'hours'
+    } else if (days === 1) {
+      text = 'hace 1 día'
+      value = 1
+      unit = 'days'
+    } else {
+      text = `hace ${days} días`
+      value = days
+      unit = 'days'
+    }
+
+    return { text, value, unit }
   }
 }

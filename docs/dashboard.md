@@ -24,43 +24,43 @@ Obtiene todas las estadísticas agregadas del dashboard en un solo request, opti
   "data": {
     "sales": {
       "today": {
-        "total": "1250.50",
+        "total": 1250.5,
         "count": 15,
-        "average": "83.37",
+        "average": 83.37,
         "growth": 12.5
       },
       "week": {
-        "total": "8500.00",
+        "total": 8500.0,
         "count": 95,
-        "average": "89.47",
+        "average": 89.47,
         "growth": 8.2
       },
       "month": {
-        "total": "35000.00",
+        "total": 35000.0,
         "count": 420,
-        "average": "83.33",
+        "average": 83.33,
         "growth": 15.3
       },
       "year": {
-        "total": "180000.00"
+        "total": 180000.0
       }
     },
     "purchases": {
       "today": {
-        "total": "450.00",
+        "total": 450.0,
         "count": 3
       },
       "week": {
-        "total": "2800.00",
+        "total": 2800.0,
         "count": 12
       },
       "month": {
-        "total": "12000.00",
+        "total": 12000.0,
         "count": 45,
         "growth": 5.5
       },
       "year": {
-        "total": "65000.00"
+        "total": 65000.0
       }
     },
     "inventory": {
@@ -76,21 +76,21 @@ Obtiene todas las estadísticas agregadas del dashboard en un solo request, opti
         {
           "id": 5,
           "name": "Pollo entero",
-          "currentStock": "2.50",
-          "minimumStock": "10.00",
+          "currentStock": 2.5,
+          "minimumStock": 10.0,
           "unit": "kg",
           "stockPercentage": 25.0
         },
         {
           "id": 12,
           "name": "Papas",
-          "currentStock": "5.00",
-          "minimumStock": "15.00",
+          "currentStock": 5.0,
+          "minimumStock": 15.0,
           "unit": "kg",
           "stockPercentage": 33.3
         }
       ],
-      "totalValue": "15000.00"
+      "totalValue": 15000.0
     },
     "dishes": {
       "total": 25,
@@ -101,14 +101,14 @@ Obtiene todas las estadísticas agregadas del dashboard en un solo request, opti
           "id": 1,
           "name": "Pollo a la Brasa - 1/4",
           "quantitySold": 150,
-          "revenue": "3750.00",
+          "revenue": 3750.0,
           "revenuePercentage": 10.7
         },
         {
           "id": 2,
           "name": "Pollo a la Brasa - 1/2",
           "quantitySold": 120,
-          "revenue": "5400.00",
+          "revenue": 5400.0,
           "revenuePercentage": 15.4
         }
       ],
@@ -129,31 +129,35 @@ Obtiene todas las estadísticas agregadas del dashboard en un solo request, opti
           "id": 3,
           "name": "Avícola San Fernando",
           "purchaseCount": 15,
-          "totalSpent": "5500.00"
+          "totalSpent": 5500.0
         },
         {
           "id": 7,
           "name": "Distribuidora Los Andes",
           "purchaseCount": 12,
-          "totalSpent": "3200.00"
+          "totalSpent": 3200.0
         }
       ]
     },
     "recentActivity": {
       "lastSale": {
         "timestamp": "2025-11-05T14:30:00.000Z",
-        "timeAgo": "hace 15 minutos"
+        "timeAgo": "hace 45 segundos",
+        "timeValue": 45,
+        "timeUnit": "seconds"
       },
       "lastPurchase": {
         "timestamp": "2025-11-05T10:20:00.000Z",
-        "timeAgo": "hace 4 horas"
+        "timeAgo": "hace 4 horas",
+        "timeValue": 4,
+        "timeUnit": "hours"
       },
       "today": {
         "dishesSold": 45,
         "mostUsedIngredient": {
           "id": 5,
           "name": "Pollo entero",
-          "quantityUsed": "12.50"
+          "quantityUsed": 12.5
         }
       }
     }
@@ -171,9 +175,9 @@ Estadísticas de ventas organizadas por período:
 
 - **today**: Ventas del día actual (desde las 00:00:00)
 
-  - `total`: Total de ventas en moneda (string con 2 decimales)
+  - `total`: Total de ventas en moneda (número con 2 decimales)
   - `count`: Número de transacciones
-  - `average`: Ticket promedio (string con 2 decimales)
+  - `average`: Ticket promedio (número con 2 decimales)
   - `growth`: Porcentaje de crecimiento vs día anterior (número con 1 decimal)
 
 - **week**: Ventas de la semana actual (desde el lunes 00:00:00)
@@ -234,12 +238,12 @@ Estadísticas del inventario y alertas de stock:
 
   - `id`: ID del ingrediente
   - `name`: Nombre del ingrediente
-  - `currentStock`: Stock actual (string con 2 decimales)
-  - `minimumStock`: Stock mínimo configurado
+  - `currentStock`: Stock actual (número con 2 decimales)
+  - `minimumStock`: Stock mínimo configurado (número con 2 decimales)
   - `unit`: Unidad de medida
   - `stockPercentage`: Porcentaje de stock disponible respecto al mínimo
 
-- `totalValue`: Valor total estimado del inventario basado en últimos precios de compra
+- `totalValue`: Valor total estimado del inventario basado en últimos precios de compra (número con 2 decimales)
 
 #### `dishes` Object
 
@@ -254,7 +258,7 @@ Estadísticas de platos:
   - `id`: ID del plato
   - `name`: Nombre del plato
   - `quantitySold`: Cantidad total vendida en el mes
-  - `revenue`: Ingresos totales generados por ese plato
+  - `revenue`: Ingresos totales generados por ese plato (número con 2 decimales)
   - `revenuePercentage`: Porcentaje que representa del total de ventas
 
 - **leastSelling**: 3 platos menos vendidos del mes
@@ -274,7 +278,7 @@ Estadísticas de proveedores:
   - `id`: ID del proveedor
   - `name`: Nombre del proveedor
   - `purchaseCount`: Cantidad de compras realizadas en el mes
-  - `totalSpent`: Total gastado con ese proveedor en el mes
+  - `totalSpent`: Total gastado con ese proveedor en el mes (número con 2 decimales)
 
 #### `recentActivity` Object
 
@@ -284,18 +288,22 @@ Actividad reciente del sistema:
 
   - `timestamp`: Fecha y hora en formato ISO 8601
   - `timeAgo`: Tiempo transcurrido en formato legible (ej: "hace 15 minutos")
+  - `timeValue`: Valor numérico del tiempo transcurrido
+  - `timeUnit`: Unidad de tiempo - puede ser `"seconds"`, `"minutes"`, `"hours"` o `"days"`
 
 - **lastPurchase**: Información de la última compra registrada
 
   - `timestamp`: Fecha y hora en formato ISO 8601
   - `timeAgo`: Tiempo transcurrido en formato legible
+  - `timeValue`: Valor numérico del tiempo transcurrido
+  - `timeUnit`: Unidad de tiempo - puede ser `"seconds"`, `"minutes"`, `"hours"` o `"days"`
 
 - **today**: Resumen del día actual
   - `dishesSold`: Cantidad total de platos vendidos hoy
   - **mostUsedIngredient**: Ingrediente más utilizado hoy
     - `id`: ID del ingrediente
     - `name`: Nombre del ingrediente
-    - `quantityUsed`: Cantidad total utilizada (string con 2 decimales)
+    - `quantityUsed`: Cantidad total utilizada (número con 2 decimales)
 
 ### Error Responses
 
@@ -323,6 +331,16 @@ Actividad reciente del sistema:
 - Los porcentajes tienen 1 decimal
 - El endpoint está optimizado para responder en menos de 2 segundos
 - Si alguna métrica falla al calcularse, retorna `null` para esa sección específica
+
+**Campos de tiempo (`timeValue` y `timeUnit`):**
+
+- Para tiempos menores a 60 segundos: `timeValue` contiene los segundos reales (0-59), `timeUnit: "seconds"`
+  - Si son menos de 5 segundos: `timeAgo: "hace menos de un minuto"`
+  - Si son 5 o más segundos: `timeAgo: "hace X segundos"`
+- Para tiempos medibles: el valor real (1, 2, 3, etc.) con la unidad apropiada
+- Las unidades posibles son: `"seconds"`, `"minutes"`, `"hours"`, `"days"`
+- Esto facilita comparaciones y formateos custom en el frontend sin parsear el string `timeAgo`
+- El cálculo siempre devuelve valores >= 0 incluso si el timestamp está en el futuro (por diferencias de zona horaria)
 
 ### Use Cases
 
