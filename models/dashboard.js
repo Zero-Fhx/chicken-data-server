@@ -1059,14 +1059,14 @@ export const DashboardModel = {
     const query = `
       WITH daily_sales AS (
         SELECT 
-          DATE(created_at AT TIME ZONE 'UTC') as sale_date,
+          DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date as sale_date,
           COUNT(*)::int as order_count,
           ROUND(CAST(SUM(total) AS numeric), 2) as daily_revenue
         FROM sales
         WHERE created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
           AND status != 'Cancelled'
           AND deleted_at IS NULL
-        GROUP BY sale_date
+        GROUP BY DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')
       ),
       stats AS (
         SELECT 
@@ -1087,7 +1087,7 @@ export const DashboardModel = {
     `
     const result = await client.query(query, [days])
     const row = result.rows[0] || {}
-    
+
     return {
       period: `${days} días`,
       avgOrdersPerDay: parseFloat(row.avg_orders_per_day) || 0,
@@ -1164,7 +1164,7 @@ export const DashboardModel = {
       LIMIT 20
     `
     const result = await client.query(query, [days])
-    
+
     return result.rows.map(row => ({
       ingredientId: row.ingredient_id,
       ingredientName: row.name,
@@ -1181,11 +1181,11 @@ export const DashboardModel = {
 
   async _getPurchaseRecommendations (client, days) {
     const stockProjections = await this._getStockProjections(client, days)
-    
+
     const totalCost = stockProjections.reduce((sum, item) => sum + item.estimatedCost, 0)
     const highPriority = stockProjections.filter(item => item.priority === 'high')
     const mediumPriority = stockProjections.filter(item => item.priority === 'medium')
-    
+
     return {
       summary: {
         totalItems: stockProjections.length,
@@ -1202,13 +1202,13 @@ export const DashboardModel = {
     if (projections.length === 0) {
       return null
     }
-    
+
     const nearestDepletion = Math.min(...projections.map(p => p.daysUntilDepleted))
     const recommendedDays = Math.max(1, Math.floor(nearestDepletion - 2))
-    
+
     const date = new Date()
     date.setDate(date.getDate() + recommendedDays)
-    
+
     return {
       date: date.toISOString().split('T')[0],
       daysFromNow: recommendedDays,
