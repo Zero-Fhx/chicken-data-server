@@ -1,5 +1,5 @@
 import pool from '../config/database.js'
-import { InternalServerError } from '../utils/errors.js'
+import { InternalServerError, BadRequestError } from '../utils/errors.js'
 
 export const DashboardModel = {
   async getStats () {
@@ -90,6 +90,28 @@ export const DashboardModel = {
     } catch (error) {
       console.error('Error fetching recent activity:', error)
       throw new InternalServerError('Failed to fetch recent activity')
+    } finally {
+      client.release()
+    }
+  },
+
+  async getTrends (period = '7d', granularity = 'daily') {
+    const client = await pool.connect()
+    try {
+      const periodDays = this._parsePeriod(period)
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - periodDays)
+
+      const trends = {
+        sales: await this._getSalesTrends(client, startDate, granularity),
+        purchases: await this._getPurchasesTrends(client, startDate, granularity),
+        inventory: await this._getInventoryTrends(client, startDate, granularity)
+      }
+
+      return trends
+    } catch (error) {
+      console.error('Error fetching trends:', error)
+      throw new InternalServerError('Failed to fetch trends data')
     } finally {
       client.release()
     }
@@ -661,5 +683,98 @@ export const DashboardModel = {
     }
 
     return { text, value, unit }
+  },
+
+  async _getSalesTrends (client, startDate, granularity) {
+    const dateFormat = this._getDateFormat(granularity)
+    const query = `
+      SELECT 
+        ${dateFormat} as period,
+        COUNT(*)::int as count,
+        ROUND(CAST(SUM(total_amount) AS numeric), 2) as revenue
+      FROM sales
+      WHERE created_at AT TIME ZONE 'UTC' >= $1
+        AND status != 'cancelled'
+      GROUP BY period
+      ORDER BY period ASC
+    `
+    const result = await client.query(query, [startDate])
+    return result.rows
+  },
+
+  async _getPurchasesTrends (client, startDate, granularity) {
+    const dateFormat = this._getDateFormat(granularity)
+    const query = `
+      SELECT 
+        ${dateFormat} as period,
+        COUNT(*)::int as count,
+        ROUND(CAST(SUM(total_amount) AS numeric), 2) as cost
+      FROM purchases
+      WHERE created_at AT TIME ZONE 'UTC' >= $1
+      GROUP BY period
+      ORDER BY period ASC
+    `
+    const result = await client.query(query, [startDate])
+    return result.rows
+  },
+
+  async _getInventoryTrends (client, startDate, granularity) {
+    const dateFormat = this._getDateFormat(granularity)
+    const query = `
+      WITH inventory_snapshots AS (
+        SELECT 
+          ${dateFormat} as period,
+          COUNT(DISTINCT i.id)::int as items_count,
+          ROUND(CAST(SUM(i.quantity * i.unit_cost) AS numeric), 2) as total_value,
+          COUNT(*) FILTER (WHERE i.quantity <= i.minimum_stock)::int as low_stock_count
+        FROM ingredients i
+        CROSS JOIN generate_series(
+          DATE_TRUNC('${this._getDateTrunc(granularity)}', $1::timestamp),
+          DATE_TRUNC('${this._getDateTrunc(granularity)}', NOW()),
+          '1 ${this._getDateTrunc(granularity)}'::interval
+        ) as period_date
+        WHERE i.created_at AT TIME ZONE 'UTC' <= period_date
+        GROUP BY period
+      )
+      SELECT * FROM inventory_snapshots
+      ORDER BY period ASC
+    `
+    const result = await client.query(query, [startDate])
+    return result.rows
+  },
+
+  _parsePeriod (period) {
+    const match = period.match(/^(\d+)([dwmy])$/)
+    if (!match) {
+      throw new BadRequestError('Invalid period format. Use format like: 7d, 4w, 6m, 1y')
+    }
+    const [, value, unit] = match
+    const multipliers = { d: 1, w: 7, m: 30, y: 365 }
+    return parseInt(value) * multipliers[unit]
+  },
+
+  _getDateFormat (granularity) {
+    const formats = {
+      hourly: "TO_CHAR(DATE_TRUNC('hour', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:00')",
+      daily: "TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD')",
+      weekly: "TO_CHAR(DATE_TRUNC('week', created_at AT TIME ZONE 'UTC'), 'YYYY-\"W\"IW')",
+      monthly: "TO_CHAR(DATE_TRUNC('month', created_at AT TIME ZONE 'UTC'), 'YYYY-MM')",
+      yearly: "TO_CHAR(DATE_TRUNC('year', created_at AT TIME ZONE 'UTC'), 'YYYY')"
+    }
+    if (!formats[granularity]) {
+      throw new BadRequestError('Invalid granularity. Use: hourly, daily, weekly, monthly, yearly')
+    }
+    return formats[granularity]
+  },
+
+  _getDateTrunc (granularity) {
+    const truncMap = {
+      hourly: 'hour',
+      daily: 'day',
+      weekly: 'week',
+      monthly: 'month',
+      yearly: 'year'
+    }
+    return truncMap[granularity] || 'day'
   }
 }

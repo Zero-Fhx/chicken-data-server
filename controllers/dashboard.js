@@ -39,6 +39,15 @@ export const DashboardController = {
         url: `${baseUrl}/stats/activity`,
         method: 'GET',
         description: 'Obtiene solo la actividad reciente del sistema'
+      },
+      trends: {
+        url: `${baseUrl}/trends`,
+        method: 'GET',
+        description: 'Obtiene series temporales de ventas, compras e inventario para visualización de tendencias',
+        params: {
+          period: 'Período de tiempo (ej: 7d, 4w, 6m, 1y). Por defecto: 7d',
+          granularity: 'Granularidad de los datos (hourly, daily, weekly, monthly, yearly). Por defecto: daily'
+        }
       }
     }
 
@@ -141,6 +150,22 @@ export const DashboardController = {
         res,
         data: activity,
         message: 'Recent activity retrieved successfully'
+      })
+    } catch (error) {
+      return handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getTrends (req, res) {
+    try {
+      const { period = '7d', granularity = 'daily' } = req.query
+
+      const trends = await DashboardModel.getTrends(period, granularity)
+
+      return handleResponse({
+        res,
+        data: trends,
+        message: 'Trends data retrieved successfully'
       })
     } catch (error) {
       return handleError({ res, status: error.statusCode || 500, error })
