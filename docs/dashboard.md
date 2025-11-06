@@ -365,7 +365,7 @@ Obtiene series temporales para visualización de tendencias.
 **Request:**
 
 ```http
-GET /api/dashboard/trends?period=7d&granularity=daily
+GET /api/dashboard/trends?period=7d&granularity=daily&includeEmpty=true
 ```
 
 **Query Parameters:**
@@ -377,48 +377,116 @@ GET /api/dashboard/trends?period=7d&granularity=daily
 - `granularity` (opcional): Granularidad de los datos
   - Valores: `hourly`, `daily`, `weekly`, `monthly`, `yearly`
   - Default: `daily`
+- `includeEmpty` (opcional): Incluir períodos sin transacciones
+  - Valores: `true`, `false`
+  - Default: `true`
+  - **true**: Retorna todos los períodos en el rango, incluyendo días sin transacciones (count: 0)
+  - **false**: Retorna solo períodos con transacciones
 
-**Response:**
+**Response (includeEmpty=true):**
 
 ```json
 {
   "success": true,
-  "message": "Trends retrieved successfully",
+  "message": "Trends data retrieved successfully",
   "data": {
-    "period": "7d",
-    "granularity": "daily",
     "sales": [
       {
-        "date": "2025-11-01",
-        "total": 125.5,
-        "count": 5,
-        "average": 25.1
+        "period": "2025-11-01",
+        "count": 0,
+        "revenue": "0.00"
       },
       {
-        "date": "2025-11-02",
-        "total": 240.0,
-        "count": 8,
-        "average": 30.0
+        "period": "2025-11-02",
+        "count": 0,
+        "revenue": "0.00"
+      },
+      {
+        "period": "2025-11-05",
+        "count": 5,
+        "revenue": "246.50"
+      },
+      {
+        "period": "2025-11-06",
+        "count": 2,
+        "revenue": "580.00"
       }
+      // ... más días (incluye todos los días en el rango)
     ],
     "purchases": [
       {
-        "date": "2025-11-01",
-        "total": 450.0,
-        "count": 3
-      }
-    ],
-    "inventory": [
+        "period": "2025-11-01",
+        "count": 0,
+        "cost": "0.00"
+      },
       {
-        "date": "2025-11-01",
-        "totalValue": 2500.0,
-        "lowStockCount": 5
+        "period": "2025-11-04",
+        "count": 3,
+        "cost": "142.00"
       }
+      // ... más días (incluye todos los días en el rango)
     ]
   },
-  "timestamp": "2025-11-05T08:00:00.000Z"
+  "timestamp": "2025-11-06T01:33:35.032Z"
 }
 ```
+
+**Response (includeEmpty=false):**
+
+```json
+{
+  "success": true,
+  "message": "Trends data retrieved successfully",
+  "data": {
+    "sales": [
+      {
+        "period": "2025-11-05",
+        "count": 5,
+        "revenue": "246.50"
+      },
+      {
+        "period": "2025-11-06",
+        "count": 2,
+        "revenue": "580.00"
+      }
+      // Solo días con ventas
+    ],
+    "purchases": [
+      {
+        "period": "2025-11-04",
+        "count": 3,
+        "cost": "142.00"
+      },
+      {
+        "period": "2025-11-06",
+        "count": 3,
+        "cost": "282.00"
+      }
+      // Solo días con compras
+    ]
+  },
+  "timestamp": "2025-11-06T01:33:35.032Z"
+}
+```
+
+**Nota**: Los nombres de campos difieren según el tipo de dato:
+
+- **Sales**: `period`, `count`, `revenue`
+- **Purchases**: `period`, `count`, `cost`
+
+**Cuándo usar `includeEmpty`:**
+
+- **`true` (recomendado para gráficos)**: Útil para visualizaciones que requieren datos continuos. Los días sin actividad aparecen con valores en cero, facilitando la creación de gráficos completos sin gaps.
+- **`false` (para análisis de datos)**: Más eficiente cuando solo necesitas los días con actividad real. Reduce el tamaño de la respuesta y facilita cálculos sobre días activos.
+
+**Importante sobre las fechas:**
+
+Las tendencias se agrupan por las **fechas reales de las transacciones**:
+
+- **Ventas**: Usa `sale_date` (fecha de la venta)
+- **Compras**: Usa `purchase_date` (fecha de la compra)
+
+Esto significa que si registras una venta o compra con una fecha anterior, aparecerá en las estadísticas del período correspondiente a esa fecha, **no** en el día actual de creación del registro. Esto permite tener un historial preciso de las transacciones comerciales.
 
 ---
 
@@ -441,84 +509,128 @@ GET /api/dashboard/alerts
   "data": {
     "critical": [
       {
-        "type": "out_of_stock",
-        "title": "Ingrediente sin stock",
-        "message": "Vinagre tinto está sin stock (0.0 litro disponible)",
+        "id": "low-stock-14",
+        "type": "low_stock",
         "severity": "critical",
+        "title": "Sin stock: Vinagre tinto",
+        "message": "0.00 litro disponibles (mínimo: 4 litro)",
         "data": {
           "ingredientId": 14,
           "ingredientName": "Vinagre tinto",
           "currentStock": 0,
           "minimumStock": 4,
-          "unit": "litro"
-        }
+          "unit": "litro",
+          "stockPercentage": 0
+        },
+        "action": "Realizar compra urgente",
+        "timestamp": "2025-11-06T01:09:19.470Z"
       }
     ],
     "warning": [
       {
+        "id": "low-stock-8",
         "type": "low_stock",
-        "title": "Stock bajo",
-        "message": "Limón tiene stock bajo (40.0% del mínimo requerido)",
         "severity": "warning",
+        "title": "Stock bajo: Limón",
+        "message": "2.00 kg disponibles (mínimo: 5 kg)",
         "data": {
           "ingredientId": 8,
           "ingredientName": "Limón",
           "currentStock": 2,
           "minimumStock": 5,
           "unit": "kg",
-          "percentage": 40
-        }
+          "stockPercentage": 40
+        },
+        "action": "Realizar compra urgente",
+        "timestamp": "2025-11-06T01:09:19.470Z"
       },
       {
-        "type": "sales_drop",
-        "title": "Caída en ventas",
-        "message": "Las ventas han caído -39.5% esta semana comparado con la semana anterior",
+        "id": "unused-ingredient-3",
+        "type": "unused_ingredient",
         "severity": "warning",
+        "title": "Ingrediente sin uso: Aceite vegetal",
+        "message": "No está asignado a ningún platillo (valor en stock: S/. 400.00)",
         "data": {
-          "currentWeekSales": 106.5,
-          "previousWeekSales": 176.0,
-          "dropPercentage": -39.5
-        }
+          "ingredientId": 3,
+          "ingredientName": "Aceite vegetal",
+          "quantity": 40,
+          "unit": "litro",
+          "stockValue": 400,
+          "daysSinceLastPurchase": 15,
+          "usedInDishes": 0
+        },
+        "action": "Asignar a platillos o considerar eliminar",
+        "timestamp": "2025-11-06T01:09:19.572Z"
+      },
+      {
+        "id": "sales-drop-1",
+        "type": "sales_drop",
+        "severity": "warning",
+        "title": "Caída en ventas",
+        "message": "Las ventas de esta semana están 45% por debajo del promedio histórico",
+        "data": {
+          "currentWeek": 125.5,
+          "average": 228.18,
+          "changePercentage": -45,
+          "weekStart": "2025-11-03",
+          "weekEnd": "2025-11-09"
+        },
+        "action": "Revisar estrategia de ventas y promociones",
+        "timestamp": "2025-11-06T01:09:19.650Z"
       }
     ],
     "info": [
       {
-        "type": "unused_ingredients",
-        "title": "Ingredientes sin uso reciente",
-        "message": "Hay 1 ingrediente(s) que no se han usado en los últimos 30 días",
+        "id": "overstock-15",
+        "type": "overstock",
         "severity": "info",
+        "title": "Sobrestock: Orégano seco",
+        "message": "Stock actual es 6x el mínimo requerido (valor: S/. 96.00)",
         "data": {
-          "count": 1,
-          "ingredients": [
-            {
-              "ingredientId": 20,
-              "ingredientName": "Cilantro",
-              "currentStock": 0.5,
-              "unit": "kg",
-              "daysUnused": 45
-            }
-          ]
-        }
+          "ingredientId": 15,
+          "ingredientName": "Orégano seco",
+          "currentStock": 6,
+          "minimumStock": 1,
+          "unit": "kg",
+          "stockValue": 96,
+          "stockRatio": 6,
+          "avgPurchaseQuantity": 3,
+          "recentPurchases": 2
+        },
+        "action": "Reducir cantidad en próximas compras",
+        "timestamp": "2025-11-06T01:09:19.771Z"
       }
     ],
     "summary": {
-      "total": 18,
+      "total": 19,
       "critical": 1,
-      "warning": 16,
+      "warning": 17,
       "info": 1
     }
   },
-  "timestamp": "2025-11-05T08:00:00.000Z"
+  "timestamp": "2025-11-06T01:09:19.771Z"
 }
 ```
 
 **Tipos de Alertas:**
 
-- `out_of_stock` (crítico): Ingredientes sin stock
-- `low_stock` (advertencia): Stock por debajo del mínimo
-- `sales_drop` (advertencia): Caída significativa en ventas (>20%)
-- `unnecessary_purchases` (advertencia): Compras de ingredientes con sobrestock
-- `unused_ingredients` (info): Ingredientes sin uso en 30+ días
+- `low_stock` (crítico/advertencia): Ingredientes sin stock o por debajo del mínimo
+  - Crítico: Stock ≤ 25% del mínimo
+  - Advertencia: Stock ≤ 100% del mínimo
+- `unused_ingredient` (advertencia): Ingredientes no asignados a ningún platillo
+- `sales_drop` (advertencia): Ventas de la semana actual < 70% del promedio de 8 semanas
+- `overstock` (info): Stock > 3x el mínimo requerido (desperdicio potencial)
+
+**Campos Comunes en Alertas:**
+
+- `id`: Identificador único de la alerta
+- `type`: Tipo de alerta
+- `severity`: Nivel de gravedad (`critical`, `warning`, `info`)
+- `title`: Título descriptivo
+- `message`: Mensaje detallado
+- `data`: Datos específicos según el tipo
+- `action`: Acción recomendada
+- `timestamp`: Momento de generación
 
 ---
 
@@ -751,57 +863,79 @@ GET /api/dashboard/breakdown/sales
   "data": {
     "byCategory": [
       {
-        "categoryId": 1,
-        "categoryName": "Platos Principales",
-        "description": "Platos de pollo a la brasa",
+        "categoryId": 6,
+        "categoryName": "Acompañamientos",
+        "description": "Guarniciones adicionales que se pueden pedir por separado, como papas o camotes fritos.",
         "week": {
-          "revenue": 74,
-          "quantity": 4,
-          "dishesCount": 3,
-          "percentage": 69.5
+          "revenue": 140,
+          "quantity": 20,
+          "dishesCount": 1,
+          "percentage": 55.7
         },
         "month": {
-          "revenue": 196,
-          "quantity": 9,
-          "dishesCount": 4,
-          "percentage": 79.5
+          "revenue": 140,
+          "quantity": 20,
+          "dishesCount": 1,
+          "percentage": 55.7
         },
         "year": {
-          "revenue": 1133.5,
-          "quantity": 41,
-          "percentage": 74.9
+          "revenue": 147,
+          "quantity": 21,
+          "percentage": 9.4
         }
       },
       {
-        "categoryId": 2,
-        "categoryName": "Acompañamientos",
-        "description": "Guarniciones y extras",
+        "categoryId": 3,
+        "categoryName": "Frito",
+        "description": "Platos preparados mediante fritura profunda, como pollo broaster y alitas.",
         "week": {
-          "revenue": 32.5,
-          "quantity": 23,
-          "dishesCount": 2,
-          "percentage": 30.5
+          "revenue": 54,
+          "quantity": 3,
+          "dishesCount": 1,
+          "percentage": 21.5
         },
         "month": {
-          "revenue": 50.5,
-          "quantity": 31,
-          "dishesCount": 2,
-          "percentage": 20.5
+          "revenue": 54,
+          "quantity": 3,
+          "dishesCount": 1,
+          "percentage": 21.5
         },
         "year": {
-          "revenue": 380.5,
-          "quantity": 173,
-          "percentage": 25.1
+          "revenue": 90,
+          "quantity": 5,
+          "percentage": 5.8
+        }
+      },
+      {
+        "categoryId": 9,
+        "categoryName": "Combos",
+        "description": "Paquetes promocionales que incluyen varios productos (plato principal, bebida, acompañamiento).",
+        "week": {
+          "revenue": 0,
+          "quantity": 0,
+          "dishesCount": 0,
+          "percentage": 0
+        },
+        "month": {
+          "revenue": 0,
+          "quantity": 0,
+          "dishesCount": 0,
+          "percentage": 0
+        },
+        "year": {
+          "revenue": 639,
+          "quantity": 17,
+          "percentage": 41
         }
       }
     ],
     "totals": {
-      "week": 106.5,
-      "month": 246.5,
-      "year": 1514
+      "week": 251.5,
+      "month": 251.5,
+      "year": 1558
     }
   },
-  "timestamp": "2025-11-05T08:00:00.000Z"
+  "timestamp": "2025-11-06T01:09:32.466Z"
 }
 ```
 
@@ -811,6 +945,8 @@ GET /api/dashboard/breakdown/sales
 - `quantity`: Cantidad total de platos vendidos
 - `dishesCount`: Número de platos diferentes vendidos de esa categoría
 - `percentage`: Porcentaje del total de ventas
+
+**Nota**: Las categorías con 0 ventas en el período actual también se incluyen si tienen ventas históricas.
 
 ---
 
@@ -833,47 +969,91 @@ GET /api/dashboard/breakdown/purchases
   "data": {
     "byCategory": [
       {
-        "categoryId": 1,
-        "categoryName": "Carnes y Aves",
-        "description": "Productos cárnicos principales",
+        "categoryId": 3,
+        "categoryName": "Verduras",
+        "description": "Vegetales frescos, tubérculos como papas o camotes, y hortalizas para ensaladas.",
         "week": {
-          "cost": 85,
-          "quantity": 15.5,
-          "ingredientsCount": 2,
-          "percentage": 59.9
+          "cost": 88,
+          "quantity": 4,
+          "ingredientsCount": 1,
+          "percentage": 62
         },
         "month": {
-          "cost": 85,
-          "quantity": 15.5,
-          "ingredientsCount": 2,
-          "percentage": 59.9
+          "cost": 88,
+          "quantity": 4,
+          "ingredientsCount": 1,
+          "percentage": 62
         },
         "year": {
-          "cost": 2108,
-          "quantity": 358.6,
-          "percentage": 58.2
+          "cost": 548,
+          "quantity": 109,
+          "percentage": 15.1
         }
       },
       {
-        "categoryId": 3,
-        "categoryName": "Aceites y Grasas",
-        "description": "Aceites para cocinar",
+        "categoryId": 5,
+        "categoryName": "Condimentos",
+        "description": "Especias, hierbas secas y sazonadores usados para marinar y dar sabor.",
         "week": {
-          "cost": 57,
-          "quantity": 12,
+          "cost": 48,
+          "quantity": 4,
           "ingredientsCount": 1,
-          "percentage": 40.1
+          "percentage": 33.8
         },
         "month": {
-          "cost": 57,
-          "quantity": 12,
+          "cost": 48,
+          "quantity": 4,
           "ingredientsCount": 1,
-          "percentage": 40.1
+          "percentage": 33.8
         },
         "year": {
-          "cost": 1511.5,
-          "quantity": 319,
-          "percentage": 41.8
+          "cost": 248.5,
+          "quantity": 20.5,
+          "percentage": 6.9
+        }
+      },
+      {
+        "categoryId": 2,
+        "categoryName": "Carnes",
+        "description": "Proteínas animales, principalmente pollo, res y cerdo.",
+        "week": {
+          "cost": 1,
+          "quantity": 1,
+          "ingredientsCount": 1,
+          "percentage": 0.7
+        },
+        "month": {
+          "cost": 1,
+          "quantity": 1,
+          "ingredientsCount": 1,
+          "percentage": 0.7
+        },
+        "year": {
+          "cost": 1293,
+          "quantity": 211,
+          "percentage": 35.7
+        }
+      },
+      {
+        "categoryId": 4,
+        "categoryName": "Aceites",
+        "description": "Grasas y aceites vegetales utilizados para freír, saltear o como parte de aderezos.",
+        "week": {
+          "cost": 0,
+          "quantity": 0,
+          "ingredientsCount": 0,
+          "percentage": 0
+        },
+        "month": {
+          "cost": 0,
+          "quantity": 0,
+          "ingredientsCount": 0,
+          "percentage": 0
+        },
+        "year": {
+          "cost": 400,
+          "quantity": 40,
+          "percentage": 11.1
         }
       }
     ],
@@ -883,16 +1063,18 @@ GET /api/dashboard/breakdown/purchases
       "year": 3619.5
     }
   },
-  "timestamp": "2025-11-05T08:00:00.000Z"
+  "timestamp": "2025-11-06T01:09:35.917Z"
 }
 ```
 
 **Campos por Categoría:**
 
 - `cost`: Costo total de compras de la categoría (S/.)
-- `quantity`: Cantidad total comprada (en unidades variadas)
+- `quantity`: Cantidad total comprada (en unidades variadas según el ingrediente)
 - `ingredientsCount`: Número de ingredientes diferentes comprados de esa categoría
 - `percentage`: Porcentaje del total de compras
+
+**Nota**: Las categorías con 0 compras en el período actual también se incluyen si tienen compras históricas.
 
 ---
 

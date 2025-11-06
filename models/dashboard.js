@@ -15,7 +15,7 @@ export const DashboardModel = {
         financial: await this._getFinancialMetrics(client)
       }
 
-      return stats
+      return { stats }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
       throw new InternalServerError('Failed to fetch dashboard statistics')
@@ -96,7 +96,7 @@ export const DashboardModel = {
     }
   },
 
-  async getTrends (period = '7d', granularity = 'daily') {
+  async getTrends (period = '7d', granularity = 'daily', includeEmptyPeriods = true) {
     const client = await pool.connect()
     try {
       const periodDays = this._parsePeriod(period)
@@ -104,14 +104,17 @@ export const DashboardModel = {
       startDate.setDate(startDate.getDate() - periodDays)
 
       const trends = {
-        sales: await this._getSalesTrends(client, startDate, granularity),
-        purchases: await this._getPurchasesTrends(client, startDate, granularity),
-        inventory: await this._getInventoryTrends(client, startDate, granularity)
+        sales: await this._getSalesTrends(client, startDate, granularity, includeEmptyPeriods),
+        purchases: await this._getPurchasesTrends(client, startDate, granularity, includeEmptyPeriods)
       }
 
       return trends
     } catch (error) {
       console.error('Error fetching trends:', error)
+      // Re-lanzar errores de validación directamente
+      if (error.constructor.name === 'BadRequestError') {
+        throw error
+      }
       throw new InternalServerError('Failed to fetch trends data')
     } finally {
       client.release()
@@ -738,80 +741,94 @@ export const DashboardModel = {
     return { text, value, unit }
   },
 
-  async _getSalesTrends (client, startDate, granularity) {
+  async _getSalesTrends (client, startDate, granularity, includeEmptyPeriods = true) {
+    const dateTrunc = this._getDateTrunc(granularity)
     const dateFormat = this._getDateFormat(granularity)
-    const query = `
-      SELECT 
-        ${dateFormat} as period,
-        COUNT(*)::int as count,
-        ROUND(CAST(SUM(total) AS numeric), 2) as revenue
-      FROM sales
-      WHERE created_at AT TIME ZONE 'UTC' >= $1
-        AND status != 'Cancelled'
-        AND deleted_at IS NULL
-      GROUP BY period
-      ORDER BY period ASC
-    `
-    const result = await client.query(query, [startDate])
-    return result.rows
-  },
 
-  async _getPurchasesTrends (client, startDate, granularity) {
-    const dateFormat = this._getDateFormat(granularity)
-    const query = `
-      SELECT 
-        ${dateFormat} as period,
-        COUNT(*)::int as count,
-        ROUND(CAST(SUM(total) AS numeric), 2) as cost
-      FROM purchases
-      WHERE created_at AT TIME ZONE 'UTC' >= $1
-        AND deleted_at IS NULL
-      GROUP BY period
-      ORDER BY period ASC
-    `
-    const result = await client.query(query, [startDate])
-    return result.rows
-  },
-
-  async _getInventoryTrends (client, startDate, granularity) {
-    const query = `
-      WITH date_series AS (
-        SELECT generate_series(
-          DATE_TRUNC('day', $1::timestamp),
-          DATE_TRUNC('day', NOW()),
-          '1 day'::interval
-        )::date as period_date
-      ),
-      daily_inventory AS (
+    if (includeEmptyPeriods) {
+      // Query con todos los períodos (incluye vacíos)
+      const query = `
+        WITH date_series AS (
+          SELECT generate_series(
+            DATE_TRUNC('${dateTrunc}', $1::timestamp),
+            DATE_TRUNC('${dateTrunc}', NOW()),
+            '1 ${dateTrunc}'::interval
+          ) as period_start
+        )
         SELECT 
-          ds.period_date,
-          COUNT(DISTINCT i.ingredient_id)::int as items_count,
-          ROUND(CAST(COALESCE(SUM(
-            i.stock * COALESCE(
-              (SELECT AVG(pd.unit_price) 
-               FROM purchase_details pd 
-               WHERE pd.ingredient_id = i.ingredient_id 
-                 AND pd.deleted_at IS NULL
-               LIMIT 5),
-              0
-            )
-          ), 0) AS numeric), 2) as total_value,
-          COUNT(*) FILTER (WHERE i.stock <= i.minimum_stock)::int as low_stock_count
+          ${dateFormat.replace('created_at', 'ds.period_start')} as period,
+          COALESCE(COUNT(s.sale_id), 0)::int as count,
+          COALESCE(ROUND(CAST(SUM(s.total) AS numeric), 2), 0.00) as revenue
         FROM date_series ds
-        LEFT JOIN ingredients i ON i.created_at AT TIME ZONE 'UTC' <= ds.period_date
-          AND i.deleted_at IS NULL
-        GROUP BY ds.period_date
-      )
-      SELECT 
-        TO_CHAR(period_date, 'YYYY-MM-DD') as period,
-        items_count,
-        total_value,
-        low_stock_count
-      FROM daily_inventory
-      ORDER BY period_date ASC
-    `
-    const result = await client.query(query, [startDate])
-    return result.rows
+        LEFT JOIN sales s ON DATE_TRUNC('${dateTrunc}', s.sale_date::timestamp) = ds.period_start
+          AND s.status != 'Cancelled'
+          AND s.deleted_at IS NULL
+        GROUP BY ds.period_start
+        ORDER BY ds.period_start ASC
+      `
+      const result = await client.query(query, [startDate])
+      return result.rows
+    } else {
+      // Query sin períodos vacíos (solo con transacciones)
+      const query = `
+        SELECT 
+          ${dateFormat.replace('created_at', 'sale_date')} as period,
+          COUNT(sale_id)::int as count,
+          ROUND(CAST(SUM(total) AS numeric), 2) as revenue
+        FROM sales
+        WHERE sale_date >= $1
+          AND status != 'Cancelled'
+          AND deleted_at IS NULL
+        GROUP BY period
+        ORDER BY period ASC
+      `
+      const result = await client.query(query, [startDate])
+      return result.rows
+    }
+  },
+
+  async _getPurchasesTrends (client, startDate, granularity, includeEmptyPeriods = true) {
+    const dateTrunc = this._getDateTrunc(granularity)
+    const dateFormat = this._getDateFormat(granularity)
+
+    if (includeEmptyPeriods) {
+      // Query con todos los períodos (incluye vacíos)
+      const query = `
+        WITH date_series AS (
+          SELECT generate_series(
+            DATE_TRUNC('${dateTrunc}', $1::timestamp),
+            DATE_TRUNC('${dateTrunc}', NOW()),
+            '1 ${dateTrunc}'::interval
+          ) as period_start
+        )
+        SELECT 
+          ${dateFormat.replace('created_at', 'ds.period_start')} as period,
+          COALESCE(COUNT(p.purchase_id), 0)::int as count,
+          COALESCE(ROUND(CAST(SUM(p.total) AS numeric), 2), 0.00) as cost
+        FROM date_series ds
+        LEFT JOIN purchases p ON DATE_TRUNC('${dateTrunc}', p.purchase_date::timestamp) = ds.period_start
+          AND p.deleted_at IS NULL
+        GROUP BY ds.period_start
+        ORDER BY ds.period_start ASC
+      `
+      const result = await client.query(query, [startDate])
+      return result.rows
+    } else {
+      // Query sin períodos vacíos (solo con transacciones)
+      const query = `
+        SELECT 
+          ${dateFormat.replace('created_at', 'purchase_date')} as period,
+          COUNT(purchase_id)::int as count,
+          ROUND(CAST(SUM(total) AS numeric), 2) as cost
+        FROM purchases
+        WHERE purchase_date >= $1
+          AND deleted_at IS NULL
+        GROUP BY period
+        ORDER BY period ASC
+      `
+      const result = await client.query(query, [startDate])
+      return result.rows
+    }
   },
 
   async _getLowStockAlerts (client) {
@@ -888,7 +905,7 @@ export const DashboardModel = {
           0
         ) AS numeric), 2) as stock_value,
         COALESCE(
-          EXTRACT(EPOCH FROM (NOW() - MAX(p.created_at AT TIME ZONE 'UTC'))) / 86400,
+          EXTRACT(EPOCH FROM (NOW() - MAX(p.created_at))) / 86400,
           999
         )::int as days_since_last_purchase,
         COUNT(DISTINCT di.dish_id)::int as used_in_dishes
@@ -932,11 +949,11 @@ export const DashboardModel = {
     const query = `
       WITH weekly_sales AS (
         SELECT 
-          DATE_TRUNC('week', created_at AT TIME ZONE 'UTC') as week,
+          DATE_TRUNC('week', created_at) as week,
           COUNT(*)::int as sales_count,
           ROUND(CAST(SUM(total) AS numeric), 2) as revenue
         FROM sales
-        WHERE created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '8 weeks'
+        WHERE created_at >= NOW() - INTERVAL '8 weeks'
           AND status != 'Cancelled'
           AND deleted_at IS NULL
         GROUP BY week
@@ -1023,7 +1040,7 @@ export const DashboardModel = {
         COUNT(DISTINCT pd.purchase_id)::int as purchase_count_last_90_days
       FROM ingredients i
       LEFT JOIN purchase_details pd ON pd.ingredient_id = i.ingredient_id 
-        AND pd.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
+        AND pd.created_at >= NOW() - INTERVAL '90 days'
         AND pd.deleted_at IS NULL
       WHERE i.stock > i.minimum_stock * 3
         AND i.minimum_stock > 0
@@ -1060,14 +1077,14 @@ export const DashboardModel = {
     const query = `
       WITH daily_sales AS (
         SELECT 
-          DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date as sale_date,
+          DATE_TRUNC('day', created_at)::date as sale_date,
           COUNT(*)::int as order_count,
           ROUND(CAST(SUM(total) AS numeric), 2) as daily_revenue
         FROM sales
-        WHERE created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '90 days'
+        WHERE created_at >= NOW() - INTERVAL '90 days'
           AND status != 'Cancelled'
           AND deleted_at IS NULL
-        GROUP BY DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')
+        GROUP BY DATE_TRUNC('day', created_at)
       ),
       stats AS (
         SELECT 
@@ -1121,14 +1138,14 @@ export const DashboardModel = {
           ) as avg_unit_price,
           COALESCE(
             SUM(di.quantity_used * sd.quantity) / 
-            NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at AT TIME ZONE 'UTC') - MIN(s.created_at AT TIME ZONE 'UTC'))) / 86400, 0),
+            NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
             0
           ) as daily_usage
         FROM ingredients i
         LEFT JOIN dish_ingredients di ON di.ingredient_id = i.ingredient_id
         LEFT JOIN sale_details sd ON sd.dish_id = di.dish_id AND sd.deleted_at IS NULL
         LEFT JOIN sales s ON s.sale_id = sd.sale_id 
-          AND s.created_at AT TIME ZONE 'UTC' >= NOW() - INTERVAL '60 days'
+          AND s.created_at >= NOW() - INTERVAL '60 days'
           AND s.status != 'Cancelled'
           AND s.deleted_at IS NULL
         WHERE i.deleted_at IS NULL
@@ -1136,7 +1153,7 @@ export const DashboardModel = {
         GROUP BY i.ingredient_id, i.name, i.stock, i.minimum_stock, i.unit
         HAVING COALESCE(
           SUM(di.quantity_used * sd.quantity) / 
-          NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at AT TIME ZONE 'UTC') - MIN(s.created_at AT TIME ZONE 'UTC'))) / 86400, 0),
+          NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
           0
         ) > 0
       )
@@ -1289,11 +1306,11 @@ export const DashboardModel = {
 
   _getDateFormat (granularity) {
     const formats = {
-      hourly: "TO_CHAR(DATE_TRUNC('hour', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:00')",
-      daily: "TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD')",
-      weekly: "TO_CHAR(DATE_TRUNC('week', created_at AT TIME ZONE 'UTC'), 'YYYY-\"W\"IW')",
-      monthly: "TO_CHAR(DATE_TRUNC('month', created_at AT TIME ZONE 'UTC'), 'YYYY-MM')",
-      yearly: "TO_CHAR(DATE_TRUNC('year', created_at AT TIME ZONE 'UTC'), 'YYYY')"
+      hourly: "TO_CHAR(DATE_TRUNC('hour', created_at), 'YYYY-MM-DD HH24:00')",
+      daily: "TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD')",
+      weekly: "TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-\"W\"IW')",
+      monthly: "TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM')",
+      yearly: "TO_CHAR(DATE_TRUNC('year', created_at), 'YYYY')"
     }
     if (!formats[granularity]) {
       throw new BadRequestError('Invalid granularity. Use: hourly, daily, weekly, monthly, yearly')
