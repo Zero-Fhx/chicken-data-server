@@ -9,22 +9,19 @@ export const SalesController = {
   async getAll (req, res) {
     try {
       const { page = 1, pageSize = 10, search, status, startDate, endDate } = req.query
-
       const filters = {}
       if (search) filters.search = search
       if (status) filters.status = status
       if (startDate) filters.startDate = startDate
       if (endDate) filters.endDate = endDate
-
       const result = await SaleModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
       if (pagination.page > pagination.pageCount && result.total > 0) {
-        return handlePageError({ res })
+        await handlePageError({ res })
+        return
       }
-
       const transformedData = result.data.map(sale => transformSale(sale))
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Sales retrieved successfully',
@@ -32,7 +29,7 @@ export const SalesController = {
         filters: Object.keys(filters).length > 0 ? filters : undefined
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
@@ -40,19 +37,17 @@ export const SalesController = {
     try {
       const validationResult = SaleValidates.SaleId(req.params)
       if (!validationResult.success) {
-        return handleValidationError({ res, error: validationResult.error })
+        await handleValidationError({ res, error: validationResult.error })
+        return
       }
-
       const sale = await SaleModel.getById(req.params.id)
-
       const transformedData = transformSale(sale)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
@@ -60,16 +55,13 @@ export const SalesController = {
     try {
       const validationResult = SaleValidates.Sale(req.body)
       if (!validationResult.success) {
-        return handleValidationError({ res, error: validationResult.error })
+        await handleValidationError({ res, error: validationResult.error })
+        return
       }
-
       const { forceSale = false, ...saleData } = req.body
-
       const sale = await SaleModel.create(saleData, { forceSale })
-
       const transformedData = transformSale(sale)
-
-      return handleResponse({
+      await handleResponse({
         res,
         status: 201,
         data: transformedData,
@@ -77,15 +69,11 @@ export const SalesController = {
       })
     } catch (error) {
       if (error instanceof InsufficientStockError) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-          data: error.details,
-          timestamp: new Date().toISOString()
-        })
+        // Aquí deberías usar handleError para mantener el timestamp de la base de datos
+        await handleError({ res, status: 400, error })
+        return
       }
-
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
@@ -93,25 +81,23 @@ export const SalesController = {
     try {
       const idValidation = SaleValidates.SaleId(req.params)
       if (!idValidation.success) {
-        return handleValidationError({ res, error: idValidation.error })
+        await handleValidationError({ res, error: idValidation.error })
+        return
       }
-
       const bodyValidation = SaleValidates.PartialSale(req.body)
       if (!bodyValidation.success) {
-        return handleValidationError({ res, error: bodyValidation.error })
+        await handleValidationError({ res, error: bodyValidation.error })
+        return
       }
-
       const sale = await SaleModel.update(req.params.id, req.body)
-
       const transformedData = transformSale(sale)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Sale updated successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
@@ -119,20 +105,18 @@ export const SalesController = {
     try {
       const validationResult = SaleValidates.SaleId(req.params)
       if (!validationResult.success) {
-        return handleValidationError({ res, error: validationResult.error })
+        await handleValidationError({ res, error: validationResult.error })
+        return
       }
-
       const sale = await SaleModel.delete(req.params.id)
-
       const transformedData = transformSale(sale)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Sale deleted successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 

@@ -8,7 +8,6 @@ export const IngredientsController = {
   async getAll (req, res) {
     try {
       const { page = 1, pageSize = 10, search, categoryId, status, lowStock, minStock, maxStock } = req.query
-
       const filters = {}
       if (search) filters.search = search
       if (categoryId) filters.categoryId = parseInt(categoryId)
@@ -16,17 +15,14 @@ export const IngredientsController = {
       if (lowStock) filters.lowStock = lowStock
       if (minStock) filters.minStock = parseFloat(minStock)
       if (maxStock) filters.maxStock = parseFloat(maxStock)
-
       const result = await IngredientModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-
       if (pagination.page > pagination.pageCount && result.total > 0) {
-        return handlePageError({ res })
+        await handlePageError({ res })
+        return
       }
-
       const transformedData = result.data.map(ingredient => transformIngredient(ingredient))
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Ingredients retrieved successfully',
@@ -34,101 +30,92 @@ export const IngredientsController = {
         filters: Object.keys(filters).length > 0 ? filters : undefined
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async getById (req, res) {
     const idValidation = IngredientValidates.IngredientId(req.params)
-
     if (!idValidation.success) {
-      return handleValidationError({ res, status: 400, error: idValidation.error })
+      await handleValidationError({ res, status: 400, error: idValidation.error })
+      return
     }
-
     try {
       const { id } = req.params
       const ingredient = await IngredientModel.getById(id)
       const transformedData = transformIngredient(ingredient)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Ingredient retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async create (req, res) {
     const validation = IngredientValidates.Ingredient(req.body)
-
     if (!validation.success) {
-      return handleValidationError({ res, status: 400, error: validation.error })
+      await handleValidationError({ res, status: 400, error: validation.error })
+      return
     }
-
     try {
       const ingredient = await IngredientModel.create(req.body)
       const transformedData = transformIngredient(ingredient)
-
-      return handleResponse({
+      await handleResponse({
         res,
         status: 201,
         data: transformedData,
         message: 'Ingredient created successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async update (req, res) {
     const idValidation = IngredientValidates.IngredientId(req.params)
-
     if (!idValidation.success) {
-      return handleValidationError({ res, status: 400, error: idValidation.error })
+      await handleValidationError({ res, status: 400, error: idValidation.error })
+      return
     }
-
     const bodyValidation = IngredientValidates.PartialIngredient(req.body)
-
     if (!bodyValidation.success) {
-      return handleValidationError({ res, status: 400, error: bodyValidation.error })
+      await handleValidationError({ res, status: 400, error: bodyValidation.error })
+      return
     }
-
     try {
       const { id } = req.params
       const ingredient = await IngredientModel.update(id, req.body)
       const transformedData = transformIngredient(ingredient)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Ingredient updated successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async delete (req, res) {
     const validation = IngredientValidates.IngredientId(req.params)
-
     if (!validation.success) {
-      return handleValidationError({ res, status: 400, error: validation.error })
+      await handleValidationError({ res, status: 400, error: validation.error })
+      return
     }
-
     try {
       const { id } = req.params
       const ingredient = await IngredientModel.delete(id)
       const transformedData = transformIngredient(ingredient)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Ingredient deleted successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   }
 }

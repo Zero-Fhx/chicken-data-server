@@ -8,26 +8,21 @@ export const DishesController = {
   async getAll (req, res) {
     try {
       const { page = 1, pageSize = 10, search, categoryId, minPrice, maxPrice, status, checkStock = 'false' } = req.query
-
       const filters = {}
       if (search) filters.search = search
       if (categoryId) filters.categoryId = parseInt(categoryId)
       if (minPrice) filters.minPrice = parseFloat(minPrice)
       if (maxPrice) filters.maxPrice = parseFloat(maxPrice)
       if (status) filters.status = status
-
       const shouldCheckStock = checkStock === 'true'
-
       const result = await DishModel.getAll({ page, limit: pageSize, filters, checkStock: shouldCheckStock })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
-
       if (pagination.page > pagination.pageCount && result.total > 0) {
-        return handlePageError({ res })
+        await handlePageError({ res })
+        return
       }
-
       const transformedData = result.data.map(dish => transformDish(dish))
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Dishes retrieved successfully',
@@ -35,104 +30,94 @@ export const DishesController = {
         filters: Object.keys(filters).length > 0 ? filters : undefined
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async getById (req, res) {
     const validation = DishValidates.DishId(req.params)
-
     if (!validation.success) {
-      return handleValidationError({ res, status: 400, error: validation.error })
+      await handleValidationError({ res, status: 400, error: validation.error })
+      return
     }
-
     try {
       const { id } = req.params
       const { checkStock = 'false' } = req.query
       const shouldCheckStock = checkStock === 'true'
-
       const dish = await DishModel.getById(id, { checkStock: shouldCheckStock })
       const transformedData = transformDish(dish)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Dish retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async create (req, res) {
     const validation = DishValidates.Dish(req.body)
-
     if (!validation.success) {
-      return handleValidationError({ res, status: 400, error: validation.error })
+      await handleValidationError({ res, status: 400, error: validation.error })
+      return
     }
-
     try {
       const dish = await DishModel.create(req.body)
       const transformedData = transformDish(dish)
-
-      return handleResponse({
+      await handleResponse({
         res,
         status: 201,
         data: transformedData,
         message: 'Dish created successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async update (req, res) {
     const idValidation = DishValidates.DishId(req.params)
-
     if (!idValidation.success) {
-      return handleValidationError({ res, status: 400, error: idValidation.error })
+      await handleValidationError({ res, status: 400, error: idValidation.error })
+      return
     }
-
     const bodyValidation = DishValidates.PartialDish(req.body)
-
     if (!bodyValidation.success) {
-      return handleValidationError({ res, status: 400, error: bodyValidation.error })
+      await handleValidationError({ res, status: 400, error: bodyValidation.error })
+      return
     }
-
     try {
       const { id } = req.params
       const dish = await DishModel.update(id, req.body)
       const transformedData = transformDish(dish)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Dish updated successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   },
 
   async delete (req, res) {
     const validation = DishValidates.DishId(req.params)
-
     if (!validation.success) {
-      return handleValidationError({ res, status: 400, error: validation.error })
+      await handleValidationError({ res, status: 400, error: validation.error })
+      return
     }
-
     try {
       const { id } = req.params
       const dish = await DishModel.delete(id)
       const transformedData = transformDish(dish)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: transformedData,
         message: 'Dish deleted successfully'
       })
     } catch (error) {
-      return handleError({ res, error })
+      await handleError({ res, error })
     }
   }
 }

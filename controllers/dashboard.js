@@ -2,7 +2,7 @@ import { DashboardModel } from '../models/dashboard.js'
 import { handleError, handleResponse } from '../utils/responseHandler.js'
 
 export const DashboardController = {
-  getEndpoints (req, res) {
+  async getEndpoints (req, res) {
     const baseUrl = '/api/dashboard'
     const endpoints = {
       stats: {
@@ -46,7 +46,8 @@ export const DashboardController = {
         description: 'Obtiene series temporales de ventas, compras e inventario para visualización de tendencias',
         params: {
           period: 'Período de tiempo (ej: 7d, 4w, 6m, 1y). Por defecto: 7d',
-          granularity: 'Granularidad de los datos (hourly, daily, weekly, monthly, yearly). Por defecto: daily'
+          granularity: 'Granularidad de los datos (hourly, daily, weekly, monthly, yearly). Por defecto: daily',
+          includeEmpty: 'Incluir períodos sin transacciones (true/false). Por defecto: true'
         }
       },
       alerts: {
@@ -78,8 +79,7 @@ export const DashboardController = {
         description: 'Desglose de compras por categoría de ingredientes (semana, mes, año)'
       }
     }
-
-    return handleResponse({
+    await handleResponse({
       res,
       data: endpoints,
       message: 'Dashboard endpoints retrieved successfully'
@@ -88,129 +88,120 @@ export const DashboardController = {
 
   async getStats (req, res) {
     try {
-      const stats = await DashboardModel.getStats()
-
-      return handleResponse({
+      const { stats } = await DashboardModel.getStats()
+      await handleResponse({
         res,
         data: stats,
         message: 'Dashboard statistics retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getSalesStats (req, res) {
     try {
       const sales = await DashboardModel.getSalesStats()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: sales,
         message: 'Sales statistics retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getPurchasesStats (req, res) {
     try {
       const purchases = await DashboardModel.getPurchasesStats()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: purchases,
         message: 'Purchases statistics retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getInventoryStats (req, res) {
     try {
       const inventory = await DashboardModel.getInventoryStats()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: inventory,
         message: 'Inventory statistics retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getDishesStats (req, res) {
     try {
       const dishes = await DashboardModel.getDishesStats()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: dishes,
         message: 'Dishes statistics retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getSuppliersStats (req, res) {
     try {
       const suppliers = await DashboardModel.getSuppliersStats()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: suppliers,
         message: 'Suppliers statistics retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getRecentActivity (req, res) {
     try {
       const activity = await DashboardModel.getRecentActivity()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: activity,
         message: 'Recent activity retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getTrends (req, res) {
     try {
-      const { period = '7d', granularity = 'daily' } = req.query
-
-      const trends = await DashboardModel.getTrends(period, granularity)
-
-      return handleResponse({
+      const { period = '7d', granularity = 'daily', includeEmpty = 'true' } = req.query
+      const includeEmptyPeriods = includeEmpty === 'true' || includeEmpty === '1'
+      const trends = await DashboardModel.getTrends(period, granularity, includeEmptyPeriods)
+      await handleResponse({
         res,
         data: trends,
         message: 'Trends data retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getAlerts (req, res) {
     try {
       const alerts = await DashboardModel.getAlerts()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: alerts,
         message: 'Alerts retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
@@ -218,66 +209,61 @@ export const DashboardController = {
     try {
       const { days = 30 } = req.query
       const daysInt = parseInt(days)
-
       if (isNaN(daysInt) || daysInt < 1 || daysInt > 365) {
-        return handleError({
+        await handleError({
           res,
           status: 400,
           error: { message: 'Days must be a number between 1 and 365' }
         })
+        return
       }
-
       const projections = await DashboardModel.getProjections(daysInt)
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: projections,
         message: 'Projections retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getComparisons (req, res) {
     try {
       const comparisons = await DashboardModel.getComparisons()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: comparisons,
         message: 'Comparisons retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getSalesBreakdown (req, res) {
     try {
       const breakdown = await DashboardModel.getSalesBreakdown()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: breakdown,
         message: 'Sales breakdown retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   },
 
   async getPurchasesBreakdown (req, res) {
     try {
       const breakdown = await DashboardModel.getPurchasesBreakdown()
-
-      return handleResponse({
+      await handleResponse({
         res,
         data: breakdown,
         message: 'Purchases breakdown retrieved successfully'
       })
     } catch (error) {
-      return handleError({ res, status: error.statusCode || 500, error })
+      await handleError({ res, status: error.statusCode || 500, error })
     }
   }
 }
