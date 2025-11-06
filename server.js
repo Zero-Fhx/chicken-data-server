@@ -61,6 +61,27 @@ app.get('/', (req, res) => {
   })
 })
 
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'Chicken Data API',
+    endpoints: {
+      health: ENDPOINTS.Health,
+      dashboard: ENDPOINTS.Dashboard,
+      dishes: {
+        list: ENDPOINTS.Dishes,
+        categories: ENDPOINTS.DishCategories
+      },
+      ingredients: {
+        list: ENDPOINTS.Ingredients,
+        categories: ENDPOINTS.IngredientCategories
+      },
+      suppliers: { list: ENDPOINTS.Suppliers },
+      purchases: { list: ENDPOINTS.Purchases },
+      sales: { list: ENDPOINTS.Sales }
+    }
+  })
+})
+
 app.get('/health', async (req, res) => {
   try {
     const dbConnected = await testConnection()
@@ -114,7 +135,7 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: 'Endpoint no encontrado',
-    availableEndpoints: {
+    endpoints: {
       health: ENDPOINTS.Health,
       dashboard: ENDPOINTS.Dashboard,
       dishes: {
