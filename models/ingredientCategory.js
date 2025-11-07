@@ -8,13 +8,21 @@ export const IngredientCategoryModel = {
 
       const conditions = ['deleted_at IS NULL']
       const params = []
-
       if (filters.search) {
-        conditions.push(`(name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 2})`)
-        const searchTerm = `%${filters.search}%`
+        const { normalizeString } = await import('../utils/stringUtils.js')
+        const normalizedSearch = normalizeString(filters.search, {
+          toLowerCase: true,
+          removeAccents: true,
+          trim: true,
+          removeExtraSpaces: true
+        })
+        conditions.push(`(
+          f_normalize(name) ILIKE $${params.length + 1} OR
+          f_normalize(description) ILIKE $${params.length + 2}
+        )`)
+        const searchTerm = `%${normalizedSearch}%`
         params.push(searchTerm, searchTerm)
       }
-
       if (filters.status) {
         conditions.push(`status = $${params.length + 1}`)
         params.push(filters.status)

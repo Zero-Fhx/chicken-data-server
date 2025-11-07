@@ -111,7 +111,7 @@ export const DashboardModel = {
       return trends
     } catch (error) {
       console.error('Error fetching trends:', error)
-      // Re-lanzar errores de validación directamente
+
       if (error.constructor.name === 'BadRequestError') {
         throw error
       }
@@ -746,7 +746,6 @@ export const DashboardModel = {
     const dateFormat = this._getDateFormat(granularity)
 
     if (includeEmptyPeriods) {
-      // Query con todos los períodos (incluye vacíos)
       const query = `
         WITH date_series AS (
           SELECT generate_series(
@@ -769,7 +768,6 @@ export const DashboardModel = {
       const result = await client.query(query, [startDate])
       return result.rows
     } else {
-      // Query sin períodos vacíos (solo con transacciones)
       const query = `
         SELECT 
           ${dateFormat.replace('created_at', 'sale_date')} as period,
@@ -792,7 +790,6 @@ export const DashboardModel = {
     const dateFormat = this._getDateFormat(granularity)
 
     if (includeEmptyPeriods) {
-      // Query con todos los períodos (incluye vacíos)
       const query = `
         WITH date_series AS (
           SELECT generate_series(
@@ -814,7 +811,6 @@ export const DashboardModel = {
       const result = await client.query(query, [startDate])
       return result.rows
     } else {
-      // Query sin períodos vacíos (solo con transacciones)
       const query = `
         SELECT 
           ${dateFormat.replace('created_at', 'purchase_date')} as period,

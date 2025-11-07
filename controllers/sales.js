@@ -69,7 +69,6 @@ export const SalesController = {
       })
     } catch (error) {
       if (error instanceof InsufficientStockError) {
-        // Aquí deberías usar handleError para mantener el timestamp de la base de datos
         await handleError({ res, status: 400, error })
         return
       }

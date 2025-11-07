@@ -10,11 +10,20 @@ export const DishModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(d.name ILIKE $${params.length + 1} OR d.description ILIKE $${params.length + 2})`)
-        const searchTerm = `%${filters.search}%`
+        const { normalizeString } = await import('../utils/stringUtils.js')
+        const normalizedSearch = normalizeString(filters.search, {
+          toLowerCase: true,
+          removeAccents: true,
+          trim: true,
+          removeExtraSpaces: true
+        })
+        conditions.push(`(
+          f_normalize(d.name) ILIKE $${params.length + 1} OR
+          f_normalize(d.description) ILIKE $${params.length + 2}
+        )`)
+        const searchTerm = `%${normalizedSearch}%`
         params.push(searchTerm, searchTerm)
       }
-
       if (filters.categoryId) {
         conditions.push(`d.category_id = $${params.length + 1}`)
         params.push(filters.categoryId)

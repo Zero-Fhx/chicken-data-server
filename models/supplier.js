@@ -8,13 +8,22 @@ export const SupplierModel = {
 
       const conditions = ['s.deleted_at IS NULL']
       const params = []
-
       if (filters.search) {
-        conditions.push(`(s.name ILIKE $${params.length + 1} OR s.ruc ILIKE $${params.length + 2} OR s.email ILIKE $${params.length + 3})`)
-        const searchTerm = `%${filters.search}%`
+        const { normalizeString } = await import('../utils/stringUtils.js')
+        const normalizedSearch = normalizeString(filters.search, {
+          toLowerCase: true,
+          removeAccents: true,
+          trim: true,
+          removeExtraSpaces: true
+        })
+        conditions.push(`(
+          f_normalize(s.name) ILIKE $${params.length + 1} OR
+          f_normalize(s.email) ILIKE $${params.length + 2} OR
+          f_normalize(s.contact_person) ILIKE $${params.length + 3}
+        )`)
+        const searchTerm = `%${normalizedSearch}%`
         params.push(searchTerm, searchTerm, searchTerm)
       }
-
       if (filters.status) {
         conditions.push(`s.status = $${params.length + 1}`)
         params.push(filters.status)

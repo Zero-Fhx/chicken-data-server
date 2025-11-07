@@ -10,11 +10,19 @@ export const SaleModel = {
       const params = []
 
       if (filters.search) {
-        conditions.push(`(notes ILIKE $${params.length + 1} OR customer ILIKE $${params.length + 2})`)
-        const searchTerm = `%${filters.search}%`
-        params.push(searchTerm, searchTerm)
+        const { normalizeString } = await import('../utils/stringUtils.js')
+        const normalizedSearch = normalizeString(filters.search, {
+          toLowerCase: true,
+          removeAccents: true,
+          trim: true,
+          removeExtraSpaces: true
+        })
+        conditions.push(`(
+          f_normalize(customer) ILIKE $${params.length + 1}
+        )`)
+        const searchTerm = `%${normalizedSearch}%`
+        params.push(searchTerm)
       }
-
       if (filters.status) {
         conditions.push(`status = $${params.length + 1}`)
         params.push(filters.status)
