@@ -1,3 +1,27 @@
+--
+-- Name: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+--
+-- Name: process_status_enum; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.process_status_enum AS ENUM (
+  'Completed',
+  'Cancelled'
+);
+
+--
+-- Name: status_enum; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.status_enum AS ENUM (
+  'Active',
+  'Inactive'
+);
 
 --
 -- Name: dish_categories; Type: TABLE; Schema: public; Owner: postgres
@@ -576,7 +600,7 @@ ALTER TABLE ONLY public.suppliers
   ADD CONSTRAINT suppliers_pkey PRIMARY KEY (supplier_id);
 
 ALTER TABLE ONLY public.dish_ingredients
-    ADD CONSTRAINT dish_ingredients_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(dish_id);
+  ADD CONSTRAINT dish_ingredients_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(dish_id);
 
 
 --
@@ -584,7 +608,7 @@ ALTER TABLE ONLY public.dish_ingredients
 --
 
 ALTER TABLE ONLY public.dish_ingredients
-    ADD CONSTRAINT dish_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(ingredient_id);
+  ADD CONSTRAINT dish_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(ingredient_id);
 
 
 --
@@ -592,7 +616,7 @@ ALTER TABLE ONLY public.dish_ingredients
 --
 
 ALTER TABLE ONLY public.dishes
-    ADD CONSTRAINT dishes_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.dish_categories(category_id);
+  ADD CONSTRAINT dishes_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.dish_categories(category_id);
 
 
 --
@@ -600,7 +624,7 @@ ALTER TABLE ONLY public.dishes
 --
 
 ALTER TABLE ONLY public.ingredients
-    ADD CONSTRAINT ingredients_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ingredient_categories(category_id);
+  ADD CONSTRAINT ingredients_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ingredient_categories(category_id);
 
 
 --
@@ -608,7 +632,7 @@ ALTER TABLE ONLY public.ingredients
 --
 
 ALTER TABLE ONLY public.purchase_details
-    ADD CONSTRAINT purchase_details_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(ingredient_id);
+  ADD CONSTRAINT purchase_details_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(ingredient_id);
 
 
 --
@@ -616,7 +640,7 @@ ALTER TABLE ONLY public.purchase_details
 --
 
 ALTER TABLE ONLY public.purchase_details
-    ADD CONSTRAINT purchase_details_purchase_id_fkey FOREIGN KEY (purchase_id) REFERENCES public.purchases(purchase_id);
+  ADD CONSTRAINT purchase_details_purchase_id_fkey FOREIGN KEY (purchase_id) REFERENCES public.purchases(purchase_id);
 
 
 --
@@ -624,7 +648,7 @@ ALTER TABLE ONLY public.purchase_details
 --
 
 ALTER TABLE ONLY public.purchases
-    ADD CONSTRAINT purchases_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(supplier_id);
+  ADD CONSTRAINT purchases_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(supplier_id);
 
 
 --
@@ -632,7 +656,7 @@ ALTER TABLE ONLY public.purchases
 --
 
 ALTER TABLE ONLY public.sale_details
-    ADD CONSTRAINT sale_details_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(dish_id);
+  ADD CONSTRAINT sale_details_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(dish_id);
 
 
 --
@@ -640,5 +664,42 @@ ALTER TABLE ONLY public.sale_details
 --
 
 ALTER TABLE ONLY public.sale_details
-    ADD CONSTRAINT sale_details_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(sale_id);
+  ADD CONSTRAINT sale_details_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(sale_id);
 
+--
+-- (Tu último FOREIGN KEY)
+--
+ALTER TABLE ONLY public.sale_details
+  ADD CONSTRAINT sale_details_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(sale_id);
+
+
+--
+-- Name: Trigram GIN Indexes; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_dishes_name_trgm_gin ON public.dishes
+USING GIN (public.f_normalize(name) gin_trgm_ops);
+
+CREATE INDEX idx_dishes_desc_trgm_gin ON public.dishes
+USING GIN (public.f_normalize(description) gin_trgm_ops);
+
+CREATE INDEX idx_ingredients_name_trgm_gin ON public.ingredients
+USING GIN (public.f_normalize(name) gin_trgm_ops);
+
+CREATE INDEX idx_dish_cat_name_trgm_gin ON public.dish_categories
+USING GIN (public.f_normalize(name) gin_trgm_ops);
+
+CREATE INDEX idx_ing_cat_name_trgm_gin ON public.ingredient_categories
+USING GIN (public.f_normalize(name) gin_trgm_ops);
+
+CREATE INDEX idx_sales_customer_trgm_gin ON public.sales
+USING GIN (public.f_normalize(customer) gin_trgm_ops);
+
+CREATE INDEX idx_suppliers_name_trgm_gin ON public.suppliers
+USING GIN (public.f_normalize(name) gin_trgm_ops);
+
+CREATE INDEX idx_suppliers_email_trgm_gin ON public.suppliers
+USING GIN (public.f_normalize(email) gin_trgm_ops);
+
+CREATE INDEX idx_suppliers_contact_trgm_gin ON public.suppliers
+USING GIN (public.f_normalize(contact_person) gin_trgm_ops);
