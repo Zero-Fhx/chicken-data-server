@@ -18,10 +18,11 @@ export const SaleModel = {
           removeExtraSpaces: true
         })
         conditions.push(`(
-          f_normalize(customer) ILIKE $${params.length + 1}
+          f_normalize(notes) ILIKE $${params.length + 1} OR
+          f_normalize(customer) ILIKE $${params.length + 2}
         )`)
         const searchTerm = `%${normalizedSearch}%`
-        params.push(searchTerm)
+        params.push(searchTerm, searchTerm)
       }
       if (filters.status) {
         conditions.push(`status = $${params.length + 1}`)
