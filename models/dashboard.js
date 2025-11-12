@@ -99,9 +99,18 @@ export const DashboardModel = {
   async getTrends (period = '7d', granularity = 'daily', includeEmptyPeriods = true) {
     const client = await pool.connect()
     try {
-      const periodDays = this._parsePeriod(period)
+      const { value, unit } = this._parsePeriod(period)
       const startDate = new Date()
-      startDate.setDate(startDate.getDate() - (periodDays - 1))
+
+      if (unit === 'd') {
+        startDate.setDate(startDate.getDate() - (value - 1))
+      } else if (unit === 'w') {
+        startDate.setDate(startDate.getDate() - (value * 7 - 1))
+      } else if (unit === 'm') {
+        startDate.setMonth(startDate.getMonth() - (value - 1))
+      } else if (unit === 'y') {
+        startDate.setFullYear(startDate.getFullYear() - (value - 1))
+      }
 
       const trends = {
         sales: await this._getSalesTrends(client, startDate, granularity, includeEmptyPeriods),
@@ -1294,8 +1303,11 @@ export const DashboardModel = {
       throw new BadRequestError('Invalid period format. Use format like: 7d, 4w, 6m, 1y')
     }
     const [, value, unit] = match
-    const multipliers = { d: 1, w: 7, m: 30, y: 365 }
-    return parseInt(value) * multipliers[unit]
+
+    return {
+      value: parseInt(value),
+      unit
+    }
   },
 
   _getDateFormat (granularity) {
