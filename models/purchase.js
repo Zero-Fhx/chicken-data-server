@@ -275,13 +275,29 @@ export const PurchaseModel = {
         throw new BadRequestError('Purchase is already cancelled')
       }
 
-      await client.query('DELETE FROM purchase_details WHERE purchase_id = $1', [id])
+      await client.query(
+        'UPDATE purchase_details SET deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = $1',
+        [id]
+      )
 
       await client.query(
         'UPDATE purchases SET status = $1, deleted_at = CURRENT_TIMESTAMP WHERE purchase_id = $2',
         ['Cancelled', id]
       )
 
+      if (purchaseToDelete.details && purchaseToDelete.details.length > 0) {
+        for (const detail of purchaseToDelete.details) {
+          const ingredientId = detail.ingredient_id
+          const quantity = detail.quantity
+
+          await client.query(
+          `UPDATE Ingredients
+           SET stock = GREATEST(0, Ingredients.stock - $1)
+           WHERE ingredient_id = $2`,
+          [quantity, ingredientId]
+          )
+        }
+      }
       await client.query('COMMIT')
 
       return await this.getById(id)
