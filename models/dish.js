@@ -82,13 +82,22 @@ export const DishModel = {
     }
   },
 
-  async getById (id, { checkStock = false } = {}) {
+  async getById (id) {
     try {
       const { rows: dishRows } = await pool.query(
-        `SELECT d.*, dc.name as category_name 
-         FROM dishes d 
-         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
-         WHERE d.dish_id = $1 AND d.deleted_at IS NULL`,
+        `SELECT 
+          d.*, 
+          dc.name as category_name,
+          COALESCE(stock_check.has_stock, true) AS has_sufficient_stock
+        FROM dishes d 
+        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+        LEFT JOIN LATERAL (
+            SELECT BOOL_AND(i.stock >= di.quantity_used) AS has_stock
+            FROM dish_ingredients di
+            JOIN ingredients i ON di.ingredient_id = i.ingredient_id
+            WHERE di.dish_id = d.dish_id
+        ) stock_check ON true
+        WHERE d.dish_id = $1 AND d.deleted_at IS NULL`,
         [id]
       )
       if (dishRows.length === 0) {
@@ -96,11 +105,6 @@ export const DishModel = {
       }
 
       const dish = dishRows[0]
-
-      if (checkStock) {
-        const stockInfo = await this.checkDishIngredientsStock(dish.dish_id, 1)
-        dish.stockInfo = stockInfo
-      }
 
       return dish
     } catch (error) {
@@ -120,10 +124,13 @@ export const DishModel = {
       )
 
       const { rows: dishRows } = await pool.query(
-        `SELECT d.*, dc.name as category_name 
-         FROM dishes d 
-         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
-         WHERE d.dish_id = $1`,
+        `SELECT 
+          d.*, 
+          dc.name as category_name,
+          true AS has_sufficient_stock -- Un plato nuevo (sin receta) siempre tiene stock
+        FROM dishes d 
+        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+        WHERE d.dish_id = $1`,
         [dish.dish_id]
       )
       return dishRows[0]
@@ -176,10 +183,19 @@ export const DishModel = {
       }
 
       const { rows: dishRows } = await pool.query(
-        `SELECT d.*, dc.name as category_name 
-         FROM dishes d 
-         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
-         WHERE d.dish_id = $1`,
+        `SELECT 
+          d.*, 
+          dc.name as category_name,
+          COALESCE(stock_check.has_stock, true) AS has_sufficient_stock
+        FROM dishes d 
+        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+        LEFT JOIN LATERAL (
+            SELECT BOOL_AND(i.stock >= di.quantity_used) AS has_stock
+            FROM dish_ingredients di
+            JOIN ingredients i ON di.ingredient_id = i.ingredient_id
+            WHERE di.dish_id = d.dish_id
+        ) stock_check ON true
+        WHERE d.dish_id = $1`,
         [id]
       )
       return dishRows[0]
