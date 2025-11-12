@@ -496,13 +496,6 @@ ALTER TABLE ONLY public.sales ALTER COLUMN sale_id SET DEFAULT nextval('public.s
 
 ALTER TABLE ONLY public.suppliers ALTER COLUMN supplier_id SET DEFAULT nextval('public.suppliers_supplier_id_seq'::regclass);
 
---
--- Name: dish_categories dish_categories_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.dish_categories
-  ADD CONSTRAINT dish_categories_name_key UNIQUE (name);
-
 
 --
 -- Name: dish_categories dish_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -534,14 +527,6 @@ ALTER TABLE ONLY public.dish_ingredients
 
 ALTER TABLE ONLY public.dishes
   ADD CONSTRAINT dishes_pkey PRIMARY KEY (dish_id);
-
-
---
--- Name: ingredient_categories ingredient_categories_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.ingredient_categories
-  ADD CONSTRAINT ingredient_categories_name_key UNIQUE (name);
 
 
 --
@@ -709,3 +694,19 @@ USING GIN (public.f_normalize(contact_person) gin_trgm_ops);
 --
 ALTER TABLE public.ingredients
   ADD CONSTRAINT check_stock_non_negative CHECK (stock >= 0);
+
+--
+-- Name: idx_unique_dish_category_name; Type: INDEX; Schema: public; Owner: postgres
+-- (Replaces dish_categories_name_key)
+--
+CREATE UNIQUE INDEX idx_unique_dish_category_name
+ON public.dish_categories (name)
+WHERE (deleted_at IS NULL);
+
+--
+-- Name: idx_unique_ingredient_category_name; Type: INDEX; Schema: public; Owner: postgres
+-- (Replaces ingredient_categories_name_key)
+--
+CREATE UNIQUE INDEX idx_unique_ingredient_category_name
+ON public.ingredient_categories (name)
+WHERE (deleted_at IS NULL);
