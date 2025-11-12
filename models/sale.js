@@ -255,23 +255,40 @@ export const SaleModel = {
     try {
       await client.query('BEGIN')
 
-      const { rows: checkRows } = await client.query('SELECT * FROM sales WHERE sale_id = $1', [id])
-      if (checkRows.length === 0) {
+      const saleToDelete = await this.getById(id)
+      if (!saleToDelete) {
         throw new NotFoundError('Sale not found')
       }
-
-      const saleToDelete = await this.getById(id)
 
       if (saleToDelete.deleted_at !== null) {
         throw new BadRequestError('Sale is already cancelled')
       }
 
-      await client.query('DELETE FROM sale_details WHERE sale_id = $1', [id])
+      await client.query(
+        'UPDATE sale_details SET deleted_at = CURRENT_TIMESTAMP WHERE sale_id = $1',
+        [id]
+      )
 
       await client.query(
         'UPDATE sales SET status = $1, deleted_at = CURRENT_TIMESTAMP WHERE sale_id = $2',
         ['Cancelled', id]
       )
+
+      if (saleToDelete.details && saleToDelete.details.length > 0) {
+        for (const detail of saleToDelete.details) {
+          const dishId = detail.dish_id
+          const quantity = detail.quantity
+
+          await client.query(
+            `UPDATE Ingredients
+            SET stock = Ingredients.stock + (Dish_Ingredients.quantity_used * $1)
+            FROM Dish_Ingredients
+            WHERE Ingredients.ingredient_id = Dish_Ingredients.ingredient_id
+              AND Dish_Ingredients.dish_id = $2`,
+            [quantity, dishId]
+          )
+        }
+      }
 
       await client.query('COMMIT')
 
