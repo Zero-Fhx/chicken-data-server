@@ -59,14 +59,14 @@ export const IngredientModel = {
         SELECT COUNT(*) AS total 
         FROM ingredients i 
         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
-        ${whereClause}
         LEFT JOIN LATERAL (
           SELECT (COUNT(di.dish_ingredient_id) > 0) AS is_in_use
           FROM dish_ingredients di
           JOIN dishes d ON di.dish_id = d.dish_id
           WHERE di.ingredient_id = i.ingredient_id
-            AND d.deleted_at IS NULL
-        ) recipe_check ON true
+          AND d.deleted_at IS NULL
+          ) recipe_check ON true
+        ${whereClause}
       `
       const { rows: [{ total }] } = await pool.query(countQuery, params)
 
