@@ -2,7 +2,7 @@ import pool from '../config/database.js'
 import { BadRequestError, InternalServerError, NotFoundError, isCustomUserError } from '../utils/errors.js'
 
 export const DishModel = {
-  async getAll ({ page = 1, limit = 10, filters = {}, checkStock = false } = {}) {
+  async getAll ({ page = 1, limit = 10, filters = {} } = {}) {
     try {
       const offset = (parseInt(page) - 1) * parseInt(limit)
 
@@ -39,6 +39,12 @@ export const DishModel = {
         params.push(filters.maxPrice)
       }
 
+      if (filters.hasStock) {
+        const hasStockBool = filters.hasStock === 'true'
+        conditions.push(`COALESCE(stock_check.has_stock, true) = $${params.length + 1}`)
+        params.push(hasStockBool)
+      }
+
       if (filters.status) {
         conditions.push(`d.status = $${params.length + 1}`)
         params.push(filters.status)
@@ -50,6 +56,12 @@ export const DishModel = {
         SELECT COUNT(*) AS total 
         FROM dishes d 
         LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+        LEFT JOIN LATERAL (
+        SELECT BOOL_AND(i.stock >= di.quantity_used) AS has_stock
+        FROM dish_ingredients di
+        JOIN ingredients i ON di.ingredient_id = i.ingredient_id
+        WHERE di.dish_id = d.dish_id
+      ) stock_check ON true
         ${whereClause}
       `
       const { rows: [{ total }] } = await pool.query(countQuery, params)
