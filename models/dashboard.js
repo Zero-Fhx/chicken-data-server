@@ -1488,7 +1488,6 @@ export const DashboardModel = {
     const vsSameMonthLastYearPercent = this._calculateGrowth(row.this_month, row.same_month_last_year)
     const vsLastYearPercent = this._calculateGrowth(row.this_year, row.last_year)
 
-    // 3. Estructura de respuesta (sin cambios)
     return {
       today: {
         current: parseFloat(row.today),
@@ -1531,7 +1530,6 @@ export const DashboardModel = {
         }
       }
     }
-    // --- FIN DE LA MODIFICACIÓN ---
   },
 
   async _getInventoryComparisons (client) {
