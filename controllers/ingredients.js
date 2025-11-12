@@ -15,7 +15,7 @@ export const IngredientsController = {
       if (lowStock) filters.lowStock = lowStock
       if (minStock) filters.minStock = parseFloat(minStock)
       if (maxStock) filters.maxStock = parseFloat(maxStock)
-      if (isInUse) filters.is_in_use = isInUse
+      if (isInUse) filters.isInUse = isInUse
       const result = await IngredientModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
       if (pagination.page > pagination.pageCount && result.total > 0) {
