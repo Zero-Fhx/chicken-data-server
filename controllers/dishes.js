@@ -7,15 +7,16 @@ import { DishValidates } from '../utils/validates.js'
 export const DishesController = {
   async getAll (req, res) {
     try {
-      const { page = 1, pageSize = 10, search, categoryId, minPrice, maxPrice, status, checkStock = 'false' } = req.query
+      const { page = 1, pageSize = 10, search, categoryId, minPrice, maxPrice, status } = req.query
       const filters = {}
       if (search) filters.search = search
       if (categoryId) filters.categoryId = parseInt(categoryId)
       if (minPrice) filters.minPrice = parseFloat(minPrice)
       if (maxPrice) filters.maxPrice = parseFloat(maxPrice)
       if (status) filters.status = status
-      const shouldCheckStock = checkStock === 'true'
-      const result = await DishModel.getAll({ page, limit: pageSize, filters, checkStock: shouldCheckStock })
+
+      const result = await DishModel.getAll({ page, limit: pageSize, filters })
+
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
       if (pagination.page > pagination.pageCount && result.total > 0) {
         await handlePageError({ res })
