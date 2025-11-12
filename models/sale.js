@@ -42,36 +42,42 @@ export const SaleModel = {
       const whereClause = `WHERE ${conditions.join(' AND ')}`
 
       const query = `
-        SELECT * FROM sales 
+        SELECT 
+          s.*,
+          -- Agregamos los detalles como un array JSON
+          COALESCE(
+            (
+              SELECT json_agg(json_build_object(
+                'sale_detail_id', sd.sale_detail_id,
+                'sale_id', sd.sale_id,
+                'dish_id', sd.dish_id,
+                'quantity', sd.quantity,
+                'unit_price', sd.unit_price,
+                'discount', sd.discount,
+                'subtotal', sd.subtotal,
+                'dish_name', d.name,
+                'dish_description', d.description,
+                'dish_price', d.price,
+                'dish_status', d.status,
+                'dish_category_id', dc.category_id,
+                'dish_category_name', dc.name
+              ))
+              FROM sale_details sd
+              LEFT JOIN dishes d ON sd.dish_id = d.dish_id
+              LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+              WHERE sd.sale_id = s.sale_id
+            ), 
+            '[]'::json -- Devuelve un array vacío si no hay detalles
+          ) as details
+        FROM sales s
         ${whereClause}
-        ORDER BY sale_date DESC, sale_id DESC 
+        GROUP BY s.sale_id -- Agrupamos por sale_id
+        ORDER BY s.sale_date DESC, s.sale_id DESC 
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
       params.push(parseInt(limit), offset)
 
       const { rows: saleRows } = await pool.query(query, params)
-
-      for (const sale of saleRows) {
-        const { rows: detailRows } = await pool.query(`
-          SELECT 
-            sd.*,
-            d.dish_id,
-            d.name as dish_name,
-            d.description as dish_description,
-            d.price as dish_price,
-            d.status as dish_status,
-            d.created_at as dish_created_at,
-            d.updated_at as dish_updated_at,
-            dc.category_id as dish_category_id,
-            dc.name as dish_category_name
-          FROM sale_details sd
-          LEFT JOIN dishes d ON sd.dish_id = d.dish_id
-          LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
-          WHERE sd.sale_id = $1
-          ORDER BY sd.sale_detail_id
-        `, [sale.sale_id])
-        sale.details = detailRows
-      }
 
       const countQuery = `SELECT COUNT(*) AS total FROM sales ${whereClause}`
 
