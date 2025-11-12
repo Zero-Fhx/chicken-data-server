@@ -1133,8 +1133,7 @@ export const DashboardModel = {
             0
           ) as avg_unit_price,
           COALESCE(
-            SUM(di.quantity_used * sd.quantity) / 
-            NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
+            SUM(di.quantity_used * sd.quantity) / NULLIF($1, 0), 
             0
           ) as daily_usage
         FROM ingredients i
@@ -1148,8 +1147,7 @@ export const DashboardModel = {
           AND i.stock > 0
         GROUP BY i.ingredient_id, i.name, i.stock, i.minimum_stock, i.unit
         HAVING COALESCE(
-          SUM(di.quantity_used * sd.quantity) / 
-          NULLIF(EXTRACT(EPOCH FROM (MAX(s.created_at) - MIN(s.created_at))) / 86400, 0),
+          SUM(di.quantity_used * sd.quantity) / NULLIF($1, 0),
           0
         ) > 0
       )
