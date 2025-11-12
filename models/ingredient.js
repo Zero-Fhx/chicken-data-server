@@ -190,6 +190,21 @@ export const IngredientModel = {
 
       const ingredientToDelete = checkIngredientRows[0]
 
+      const { rows: [{ count }] } = await pool.query(
+        `SELECT COUNT(di.dish_ingredient_id) as count 
+        FROM dish_ingredients di
+        JOIN dishes d ON di.dish_id = d.dish_id
+        WHERE di.ingredient_id = $1 
+          AND d.deleted_at IS NULL`,
+        [id]
+      )
+
+      if (count > 0) {
+        throw new BadRequestError(
+          `Cannot delete ingredient. It is currently used in ${count} dish recipe(s). Please remove it from those recipes first or set its status to "Inactive".`
+        )
+      }
+
       const result = await pool.query(
         'UPDATE ingredients SET deleted_at = CURRENT_TIMESTAMP WHERE ingredient_id = $1',
         [id]
