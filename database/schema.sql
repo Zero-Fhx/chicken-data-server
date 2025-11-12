@@ -703,3 +703,9 @@ USING GIN (public.f_normalize(email) gin_trgm_ops);
 
 CREATE INDEX idx_suppliers_contact_trgm_gin ON public.suppliers
 USING GIN (public.f_normalize(contact_person) gin_trgm_ops);
+
+--
+-- Name: ingredients check_stock_non_negative; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+ALTER TABLE public.ingredients
+  ADD CONSTRAINT check_stock_non_negative CHECK (stock >= 0);
