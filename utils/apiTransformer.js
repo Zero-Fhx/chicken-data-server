@@ -30,7 +30,7 @@ export const transformDish = (dish) => {
   }
 
   if (dish.has_sufficient_stock !== undefined) {
-    transformed.has_sufficient_stock = dish.has_sufficient_stock
+    transformed.hasSufficientStock = dish.has_sufficient_stock
   }
 
   return transformed
@@ -89,7 +89,7 @@ export const transformIngredient = (ingredient) => {
   }
 
   if (ingredient.is_in_use !== undefined) {
-    transformed.is_in_use = ingredient.is_in_use
+    transformed.isInUse = ingredient.is_in_use
   }
 
   return transformed
