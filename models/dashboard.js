@@ -105,7 +105,7 @@ export const DashboardModel = {
       if (unit === 'd') {
         startDate.setDate(startDate.getDate() - (value - 1))
       } else if (unit === 'w') {
-        startDate.setDate(startDate.getDate() - (value * 7 - 1))
+        startDate.setDate(startDate.getDate() - ((value - 1) * 7))
       } else if (unit === 'm') {
         startDate.setMonth(startDate.getMonth() - (value - 1))
       } else if (unit === 'y') {
