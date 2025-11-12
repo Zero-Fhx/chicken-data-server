@@ -202,46 +202,36 @@ export const DashboardModel = {
       lastMonthStart.setMonth(lastMonthStart.getMonth() - 1)
       const lastMonthEnd = monthStart
 
-      const currentQuery = `
+      const query = `
         SELECT 
           COALESCE(SUM(CASE WHEN sale_date >= $1 THEN total ELSE 0 END), 0) as day_total,
           COALESCE(COUNT(CASE WHEN sale_date >= $1 THEN 1 END), 0) as day_count,
           COALESCE(AVG(CASE WHEN sale_date >= $1 THEN total END), 0) as day_average,
-          
+
           COALESCE(SUM(CASE WHEN sale_date >= $2 THEN total ELSE 0 END), 0) as week_total,
           COALESCE(COUNT(CASE WHEN sale_date >= $2 THEN 1 END), 0) as week_count,
           COALESCE(AVG(CASE WHEN sale_date >= $2 THEN total END), 0) as week_average,
-          
+
           COALESCE(SUM(CASE WHEN sale_date >= $3 THEN total ELSE 0 END), 0) as month_total,
           COALESCE(COUNT(CASE WHEN sale_date >= $3 THEN 1 END), 0) as month_count,
           COALESCE(AVG(CASE WHEN sale_date >= $3 THEN total END), 0) as month_average,
-          
-          COALESCE(SUM(CASE WHEN sale_date >= $4 THEN total ELSE 0 END), 0) as year_total
+
+          COALESCE(SUM(CASE WHEN sale_date >= $4 THEN total ELSE 0 END), 0) as year_total,
+
+          COALESCE(SUM(CASE WHEN sale_date >= $5 AND sale_date < $6 THEN total ELSE 0 END), 0) as yesterday_total,
+          COALESCE(SUM(CASE WHEN sale_date >= $7 AND sale_date < $8 THEN total ELSE 0 END), 0) as last_week_total,
+          COALESCE(SUM(CASE WHEN sale_date >= $9 AND sale_date < $10 THEN total ELSE 0 END), 0) as last_month_total
+
         FROM sales
         WHERE deleted_at IS NULL
           AND status = 'Completed'
       `
 
-      const currentResult = await client.query(currentQuery, [
+      const result = await client.query(query, [
         todayStart.toISOString(),
         weekStart.toISOString(),
         monthStart.toISOString(),
-        yearStart.toISOString()
-      ])
-
-      const previousQuery = `
-        SELECT 
-          COALESCE(SUM(CASE WHEN sale_date >= $1 AND sale_date < $2 THEN total ELSE 0 END), 0) as yesterday_total,
-          
-          COALESCE(SUM(CASE WHEN sale_date >= $3 AND sale_date < $4 THEN total ELSE 0 END), 0) as last_week_total,
-          
-          COALESCE(SUM(CASE WHEN sale_date >= $5 AND sale_date < $6 THEN total ELSE 0 END), 0) as last_month_total
-        FROM sales
-        WHERE deleted_at IS NULL
-          AND status = 'Completed'
-      `
-
-      const previousResult = await client.query(previousQuery, [
+        yearStart.toISOString(),
         yesterdayStart.toISOString(),
         yesterdayEnd.toISOString(),
         lastWeekStart.toISOString(),
@@ -250,43 +240,42 @@ export const DashboardModel = {
         lastMonthEnd.toISOString()
       ])
 
-      const current = currentResult.rows[0]
-      const previous = previousResult.rows[0]
+      const data = result.rows[0]
 
       const dayGrowth = this._calculateGrowth(
-        parseFloat(current.day_total),
-        parseFloat(previous.yesterday_total)
+        parseFloat(data.day_total),
+        parseFloat(data.yesterday_total)
       )
       const weekGrowth = this._calculateGrowth(
-        parseFloat(current.week_total),
-        parseFloat(previous.last_week_total)
+        parseFloat(data.week_total),
+        parseFloat(data.last_week_total)
       )
       const monthGrowth = this._calculateGrowth(
-        parseFloat(current.month_total),
-        parseFloat(previous.last_month_total)
+        parseFloat(data.month_total),
+        parseFloat(data.last_month_total)
       )
 
       return {
         today: {
-          total: Math.round(parseFloat(current.day_total) * 100) / 100,
-          count: parseInt(current.day_count),
-          average: Math.round(parseFloat(current.day_average) * 100) / 100,
+          total: Math.round(parseFloat(data.day_total) * 100) / 100,
+          count: parseInt(data.day_count),
+          average: Math.round(parseFloat(data.day_average) * 100) / 100,
           growth: dayGrowth
         },
         week: {
-          total: Math.round(parseFloat(current.week_total) * 100) / 100,
-          count: parseInt(current.week_count),
-          average: Math.round(parseFloat(current.week_average) * 100) / 100,
+          total: Math.round(parseFloat(data.week_total) * 100) / 100,
+          count: parseInt(data.week_count),
+          average: Math.round(parseFloat(data.week_average) * 100) / 100,
           growth: weekGrowth
         },
         month: {
-          total: Math.round(parseFloat(current.month_total) * 100) / 100,
-          count: parseInt(current.month_count),
-          average: Math.round(parseFloat(current.month_average) * 100) / 100,
+          total: Math.round(parseFloat(data.month_total) * 100) / 100,
+          count: parseInt(data.month_count),
+          average: Math.round(parseFloat(data.month_average) * 100) / 100,
           growth: monthGrowth
         },
         year: {
-          total: Math.round(parseFloat(current.year_total) * 100) / 100
+          total: Math.round(parseFloat(data.year_total) * 100) / 100
         }
       }
     } catch (error) {
@@ -404,16 +393,20 @@ export const DashboardModel = {
       const criticalResult = await client.query(criticalQuery)
 
       const valueQuery = `
-        SELECT COALESCE(SUM(i.stock * COALESCE(last_price.unit_price, 0)), 0) as total_value
+        WITH latest_prices AS (
+          -- 1. Obtenemos el precio más reciente de CADA ingrediente en una sola pasada
+          SELECT DISTINCT ON (ingredient_id)
+            ingredient_id,
+            unit_price
+          FROM purchase_details
+          WHERE deleted_at IS NULL
+          ORDER BY ingredient_id, created_at DESC
+        )
+        -- 2. Ahora unimos los ingredientes con sus precios más recientes
+        SELECT 
+          COALESCE(SUM(i.stock * COALESCE(lp.unit_price, 0)), 0) as total_value
         FROM ingredients i
-        LEFT JOIN LATERAL (
-          SELECT pd.unit_price
-          FROM purchase_details pd
-          WHERE pd.ingredient_id = i.ingredient_id
-            AND pd.deleted_at IS NULL
-          ORDER BY pd.created_at DESC
-          LIMIT 1
-        ) last_price ON true
+        LEFT JOIN latest_prices lp ON i.ingredient_id = lp.ingredient_id
         WHERE i.deleted_at IS NULL
       `
 
@@ -496,15 +489,16 @@ export const DashboardModel = {
         SELECT 
           d.dish_id,
           d.name,
-          SUM(sd.quantity) as total_sold
+          COALESCE(SUM(sd.quantity), 0) as total_sold
         FROM dishes d
-        INNER JOIN sale_details sd ON d.dish_id = sd.dish_id
-        INNER JOIN sales s ON sd.sale_id = s.sale_id
-        WHERE d.deleted_at IS NULL
+        LEFT JOIN sale_details sd ON d.dish_id = sd.dish_id
           AND sd.deleted_at IS NULL
+        LEFT JOIN sales s ON sd.sale_id = s.sale_id
           AND s.deleted_at IS NULL
           AND s.status = 'Completed'
           AND s.sale_date >= $1
+        WHERE d.deleted_at IS NULL
+          AND d.status = 'Active' -- Solo mostrar platos activos
         GROUP BY d.dish_id, d.name
         ORDER BY total_sold ASC
         LIMIT 3
@@ -686,7 +680,7 @@ export const DashboardModel = {
       }
     } catch (error) {
       console.error('Error fetching recent activity:', error)
-      return null
+      throw error
     }
   },
 
@@ -1585,41 +1579,15 @@ export const DashboardModel = {
     const result = await client.query(query)
     const row = result.rows[0]
 
-    const compareQuery = `
-      SELECT
-        COUNT(*) as past_total,
-        0 as past_low_stock,
-        0 as past_value
-      FROM ingredients
-      WHERE status = 'Active'
-    `
-
-    const compareResult = await client.query(compareQuery)
-    const compareRow = compareResult.rows[0]
-
     return {
       totalIngredients: {
-        current: parseInt(row.current_total),
-        vs30DaysAgo: {
-          value: parseInt(compareRow.past_total),
-          change: compareRow.past_total > 0
-            ? parseFloat(((row.current_total - compareRow.past_total) / compareRow.past_total * 100).toFixed(1))
-            : null
-        }
+        current: parseInt(row.current_total)
       },
       lowStockItems: {
-        current: parseInt(row.current_low_stock),
-        vs30DaysAgo: {
-          value: parseInt(compareRow.past_low_stock),
-          change: null
-        }
+        current: parseInt(row.current_low_stock)
       },
       totalValue: {
-        current: parseFloat(row.current_value),
-        vs30DaysAgo: {
-          value: parseFloat(compareRow.past_value),
-          change: null
-        }
+        current: parseFloat(row.current_value)
       }
     }
   },
