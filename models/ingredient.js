@@ -58,9 +58,19 @@ export const IngredientModel = {
       const { rows: [{ total }] } = await pool.query(countQuery, params)
 
       const dataQuery = `
-        SELECT i.*, ic.name as category_name 
+        SELECT 
+          i.*, 
+          ic.name as category_name,
+          COALESCE(recipe_check.is_in_use, false) AS is_in_use
         FROM ingredients i 
         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+        LEFT JOIN LATERAL (
+          SELECT (COUNT(di.dish_ingredient_id) > 0) AS is_in_use
+          FROM dish_ingredients di
+          JOIN dishes d ON di.dish_id = d.dish_id
+          WHERE di.ingredient_id = i.ingredient_id
+            AND d.deleted_at IS NULL -- Solo contar platos activos
+        ) recipe_check ON true
         ${whereClause} 
         ORDER BY i.ingredient_id DESC 
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -76,10 +86,20 @@ export const IngredientModel = {
   async getById (id) {
     try {
       const { rows: ingredientRows } = await pool.query(
-        `SELECT i.*, ic.name as category_name 
-         FROM ingredients i 
-         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
-         WHERE i.ingredient_id = $1 AND i.deleted_at IS NULL`,
+        `SELECT 
+          i.*, 
+          ic.name as category_name,
+          COALESCE(recipe_check.is_in_use, false) AS is_in_use
+        FROM ingredients i 
+        LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+        LEFT JOIN LATERAL (
+            SELECT (COUNT(di.dish_ingredient_id) > 0) AS is_in_use
+            FROM dish_ingredients di
+            JOIN dishes d ON di.dish_id = d.dish_id
+            WHERE di.ingredient_id = i.ingredient_id
+              AND d.deleted_at IS NULL
+        ) recipe_check ON true
+        WHERE i.ingredient_id = $1 AND i.deleted_at IS NULL`,
         [id]
       )
       if (ingredientRows.length === 0) {
@@ -103,10 +123,13 @@ export const IngredientModel = {
       )
 
       const { rows: ingredientRows } = await pool.query(
-        `SELECT i.*, ic.name as category_name 
-         FROM ingredients i 
-         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
-         WHERE i.ingredient_id = $1`,
+        `SELECT 
+          i.*, 
+          ic.name as category_name,
+          false AS is_in_use
+        FROM ingredients i 
+        LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+        WHERE i.ingredient_id = $1`,
         [ingredient.ingredient_id]
       )
       return ingredientRows[0]
@@ -163,10 +186,20 @@ export const IngredientModel = {
       }
 
       const { rows: ingredientRows } = await pool.query(
-        `SELECT i.*, ic.name as category_name 
-         FROM ingredients i 
-         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
-         WHERE i.ingredient_id = $1`,
+        `SELECT 
+          i.*, 
+          ic.name as category_name,
+          COALESCE(recipe_check.is_in_use, false) AS is_in_use
+        FROM ingredients i 
+        LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+        LEFT JOIN LATERAL (
+            SELECT (COUNT(di.dish_ingredient_id) > 0) AS is_in_use
+            FROM dish_ingredients di
+            JOIN dishes d ON di.dish_id = d.dish_id
+            WHERE di.ingredient_id = i.ingredient_id
+              AND d.deleted_at IS NULL
+        ) recipe_check ON true
+        WHERE i.ingredient_id = $1`,
         [id]
       )
       return ingredientRows[0]
