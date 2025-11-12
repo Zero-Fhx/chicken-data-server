@@ -88,6 +88,10 @@ export const transformIngredient = (ingredient) => {
     }
   }
 
+  if (ingredient.is_in_use !== undefined) {
+    transformed.is_in_use = ingredient.is_in_use
+  }
+
   return transformed
 }
 
