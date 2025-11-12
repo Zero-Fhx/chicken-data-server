@@ -251,7 +251,7 @@ BEGIN
 
   UPDATE Ingredients
 
-  SET stock = Ingredients.stock - (Dish_Ingredients.quantity_used * NEW.quantity)
+  SET stock = GREATEST(0, Ingredients.stock - (Dish_Ingredients.quantity_used * NEW.quantity))
 
   FROM Dish_Ingredients
 
@@ -296,7 +296,7 @@ BEGIN
 
   UPDATE Ingredients
 
-  SET stock = Ingredients.stock + (Dish_Ingredients.quantity_used * OLD.quantity) - (Dish_Ingredients.quantity_used * NEW.quantity)
+  SET stock = GREATEST(0, Ingredients.stock + (Dish_Ingredients.quantity_used * OLD.quantity) - (Dish_Ingredients.quantity_used * NEW.quantity))
 
   FROM Dish_Ingredients
 
