@@ -7,7 +7,7 @@ import { IngredientValidates } from '../utils/validates.js'
 export const IngredientsController = {
   async getAll (req, res) {
     try {
-      const { page = 1, pageSize = 10, search, categoryId, status, lowStock, minStock, maxStock } = req.query
+      const { page = 1, pageSize = 10, search, categoryId, status, lowStock, minStock, maxStock, isInUse } = req.query
       const filters = {}
       if (search) filters.search = search
       if (categoryId) filters.categoryId = parseInt(categoryId)
@@ -15,6 +15,7 @@ export const IngredientsController = {
       if (lowStock) filters.lowStock = lowStock
       if (minStock) filters.minStock = parseFloat(minStock)
       if (maxStock) filters.maxStock = parseFloat(maxStock)
+      if (isInUse) filters.is_in_use = isInUse
       const result = await IngredientModel.getAll({ page, limit: pageSize, filters })
       const pagination = getPagination({ page, limit: pageSize, total: result.total })
       if (pagination.page > pagination.pageCount && result.total > 0) {

@@ -47,6 +47,12 @@ export const IngredientModel = {
         params.push(filters.maxStock)
       }
 
+      if (filters.isInUse) {
+        const isInUseBool = filters.isInUse === 'true'
+        conditions.push(`COALESCE(recipe_check.is_in_use, false) = $${params.length + 1}`)
+        params.push(isInUseBool)
+      }
+
       const whereClause = `WHERE ${conditions.join(' AND ')}`
 
       const countQuery = `
@@ -54,6 +60,13 @@ export const IngredientModel = {
         FROM ingredients i 
         LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
         ${whereClause}
+        LEFT JOIN LATERAL (
+          SELECT (COUNT(di.dish_ingredient_id) > 0) AS is_in_use
+          FROM dish_ingredients di
+          JOIN dishes d ON di.dish_id = d.dish_id
+          WHERE di.ingredient_id = i.ingredient_id
+            AND d.deleted_at IS NULL
+        ) recipe_check ON true
       `
       const { rows: [{ total }] } = await pool.query(countQuery, params)
 
