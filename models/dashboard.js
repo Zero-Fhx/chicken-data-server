@@ -1304,7 +1304,7 @@ export const DashboardModel = {
     const formats = {
       hourly: "TO_CHAR(DATE_TRUNC('hour', created_at), 'YYYY-MM-DD HH24:00')",
       daily: "TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD')",
-      weekly: "TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-\"W\"IW')",
+      weekly: "TO_CHAR(DATE_TRUNC('week', created_at), 'IYYY-\"W\"IW')",
       monthly: "TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM')",
       yearly: "TO_CHAR(DATE_TRUNC('year', created_at), 'YYYY')"
     }
