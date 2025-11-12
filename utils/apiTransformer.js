@@ -29,15 +29,8 @@ export const transformDish = (dish) => {
     }
   }
 
-  if (dish.stockInfo) {
-    transformed.stockInfo = {
-      hasIngredients: dish.stockInfo.hasIngredients,
-      hasSufficientStock: dish.stockInfo.hasSufficientStock
-    }
-
-    if (dish.stockInfo.insufficientIngredients && dish.stockInfo.insufficientIngredients.length > 0) {
-      transformed.stockInfo.insufficientIngredients = dish.stockInfo.insufficientIngredients
-    }
+  if (dish.has_sufficient_stock !== undefined) {
+    transformed.has_sufficient_stock = dish.has_sufficient_stock
   }
 
   return transformed
