@@ -90,37 +90,45 @@ export const SaleModel = {
 
   async getById (id) {
     try {
-      const { rows: saleRows } = await pool.query(`
-        SELECT * FROM sales 
-        WHERE sale_id = $1
-      `, [id])
+      const query = `
+        SELECT 
+          s.*,
+          COALESCE(
+            (
+              SELECT json_agg(json_build_object(
+                'sale_detail_id', sd.sale_detail_id,
+                'sale_id', sd.sale_id,
+                'dish_id', sd.dish_id,
+                'quantity', sd.quantity,
+                'unit_price', sd.unit_price,
+                'discount', sd.discount,
+                'subtotal', sd.subtotal,
+                'dish_name', d.name,
+                'dish_description', d.description,
+                'dish_price', d.price,
+                'dish_status', d.status,
+                'dish_category_id', dc.category_id,
+                'dish_category_name', dc.name
+              ))
+              FROM sale_details sd
+              LEFT JOIN dishes d ON sd.dish_id = d.dish_id
+              LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
+              WHERE sd.sale_id = s.sale_id
+            ), 
+            '[]'::json
+          ) as details
+        FROM sales s
+        WHERE s.sale_id = $1
+        GROUP BY s.sale_id
+      `
+
+      const { rows: saleRows } = await pool.query(query, [id])
 
       if (saleRows.length === 0) {
         throw new NotFoundError('Sale not found')
       }
 
       const sale = saleRows[0]
-
-      const { rows: detailRows } = await pool.query(`
-        SELECT 
-          sd.*,
-          d.dish_id,
-          d.name as dish_name,
-          d.description as dish_description,
-          d.price as dish_price,
-          d.status as dish_status,
-          d.created_at as dish_created_at,
-          d.updated_at as dish_updated_at,
-          dc.category_id as dish_category_id,
-          dc.name as dish_category_name
-        FROM sale_details sd
-        LEFT JOIN dishes d ON sd.dish_id = d.dish_id
-        LEFT JOIN dish_categories dc ON d.category_id = dc.category_id
-        WHERE sd.sale_id = $1
-        ORDER BY sd.sale_detail_id
-      `, [id])
-
-      sale.details = detailRows
 
       return sale
     } catch (error) {
