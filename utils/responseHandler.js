@@ -22,7 +22,8 @@ export const handleError = async ({ res, status = 500, error = { message: 'Inter
     success: false,
     error: {
       type: error.constructor.name || 'Error',
-      message: error.message || error
+      message: error.message || error,
+      ...(error.details && { details: error.details })
     },
     timestamp: await TimestampService.getDbTimestamp()
   }
