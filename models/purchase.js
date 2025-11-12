@@ -49,39 +49,44 @@ export const PurchaseModel = {
           s.contact_person as supplier_contact_person,
           s.status as supplier_status,
           s.created_at as supplier_created_at,
-          s.updated_at as supplier_updated_at
-        FROM purchases p 
+          s.updated_at as supplier_updated_at,
+
+          -- Agregamos los detalles como un array JSON
+          COALESCE(
+            (
+              SELECT json_agg(json_build_object(
+                'purchase_detail_id', pd.purchase_detail_id,
+                'purchase_id', pd.purchase_id,
+                'ingredient_id', pd.ingredient_id,
+                'quantity', pd.quantity,
+                'unit_price', pd.unit_price,
+                'subtotal', pd.subtotal,
+                'ingredient_name', i.name,
+                'ingredient_unit', i.unit,
+                'ingredient_status', i.status,
+                'ingredient_stock', i.stock,
+                'ingredient_minimum_stock', i.minimum_stock,
+                'ingredient_category_id', ic.category_id,
+                'ingredient_category_name', ic.name
+              ))
+              FROM purchase_details pd
+              LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
+              LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
+              WHERE pd.purchase_id = p.purchase_id
+            ), 
+            '[]'::json -- Devuelve un array vacío si no hay detalles
+          ) as details
+
+        FROM purchases p
         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
         ${whereClause}
+        GROUP BY p.purchase_id, s.supplier_id -- Agrupamos por las claves primarias
         ORDER BY p.purchase_date DESC, p.purchase_id DESC 
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `
       params.push(parseInt(limit), offset)
 
       const { rows: purchaseRows } = await pool.query(query, params)
-
-      for (const purchase of purchaseRows) {
-        const { rows: detailRows } = await pool.query(`
-          SELECT 
-            pd.*,
-            i.ingredient_id,
-            i.name as ingredient_name,
-            i.unit as ingredient_unit,
-            i.status as ingredient_status,
-            i.stock as ingredient_stock,
-            i.minimum_stock as ingredient_minimum_stock,
-            i.created_at as ingredient_created_at,
-            i.updated_at as ingredient_updated_at,
-            ic.category_id as ingredient_category_id,
-            ic.name as ingredient_category_name
-          FROM purchase_details pd
-          LEFT JOIN ingredients i ON pd.ingredient_id = i.ingredient_id
-          LEFT JOIN ingredient_categories ic ON i.category_id = ic.category_id
-          WHERE pd.purchase_id = $1
-          ORDER BY pd.purchase_detail_id
-        `, [purchase.purchase_id])
-        purchase.details = detailRows
-      }
 
       const countQuery = `
         SELECT COUNT(*) AS total 
