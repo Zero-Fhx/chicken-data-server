@@ -882,43 +882,55 @@ export const DashboardModel = {
 
   async _getUnusedIngredientsAlerts (client) {
     const query = `
+      WITH avg_prices AS (
+        -- 1. Obtenemos el precio promedio de CADA ingrediente en una pasada
+        SELECT 
+          ingredient_id, 
+          COALESCE(AVG(unit_price), 0) as avg_unit_price
+        FROM purchase_details
+        WHERE deleted_at IS NULL
+        GROUP BY ingredient_id
+      ),
+      last_purchases AS (
+        -- 2. Obtenemos la última fecha de compra de CADA ingrediente en una pasada
+        SELECT 
+          pd.ingredient_id,
+          MAX(p.created_at) as last_purchase_date
+        FROM purchase_details pd
+        JOIN purchases p ON pd.purchase_id = p.purchase_id
+        WHERE p.deleted_at IS NULL
+        GROUP BY pd.ingredient_id
+      ),
+      dish_usage AS (
+        -- 3. Contamos el uso en recetas de CADA ingrediente en una pasada
+        SELECT 
+          di.ingredient_id,
+          COUNT(DISTINCT d.dish_id) as dish_count
+        FROM dish_ingredients di
+        JOIN dishes d ON di.dish_id = d.dish_id
+        WHERE d.deleted_at IS NULL
+        GROUP BY di.ingredient_id
+      )
+      -- 4. Unimos todo
       SELECT 
         i.ingredient_id,
         i.name,
         i.stock,
         i.unit,
+        COALESCE(ap.avg_unit_price, 0) as avg_unit_price,
+        ROUND(CAST(i.stock * COALESCE(ap.avg_unit_price, 0) AS numeric), 2) as stock_value,
         COALESCE(
-          (SELECT AVG(pd.unit_price) 
-           FROM purchase_details pd 
-           WHERE pd.ingredient_id = i.ingredient_id 
-             AND pd.deleted_at IS NULL
-           LIMIT 5),
-          0
-        ) as avg_unit_price,
-        ROUND(CAST(i.stock * COALESCE(
-          (SELECT AVG(pd.unit_price) 
-           FROM purchase_details pd 
-           WHERE pd.ingredient_id = i.ingredient_id 
-             AND pd.deleted_at IS NULL
-           LIMIT 5),
-          0
-        ) AS numeric), 2) as stock_value,
-        COALESCE(
-          EXTRACT(EPOCH FROM (NOW() - MAX(p.created_at))) / 86400,
+          EXTRACT(EPOCH FROM (NOW() - lp.last_purchase_date)) / 86400,
           999
         )::int as days_since_last_purchase,
-        COUNT(DISTINCT di.dish_id)::int as used_in_dishes
+        COALESCE(du.dish_count, 0)::int as used_in_dishes
       FROM ingredients i
-      LEFT JOIN purchases p ON p.purchase_id IN (
-        SELECT DISTINCT pd.purchase_id 
-        FROM purchase_details pd 
-        WHERE pd.ingredient_id = i.ingredient_id
-      )
-      LEFT JOIN dish_ingredients di ON di.ingredient_id = i.ingredient_id
+      LEFT JOIN avg_prices ap ON i.ingredient_id = ap.ingredient_id
+      LEFT JOIN last_purchases lp ON i.ingredient_id = lp.ingredient_id
+      LEFT JOIN dish_usage du ON i.ingredient_id = du.ingredient_id
       WHERE i.stock > 0
         AND i.deleted_at IS NULL
-      GROUP BY i.ingredient_id, i.name, i.stock, i.unit
-      HAVING COUNT(DISTINCT di.dish_id) = 0
+        AND COALESCE(du.dish_count, 0) = 0 -- El filtro HAVING ahora es un WHERE
       ORDER BY stock_value DESC
       LIMIT 10
     `
