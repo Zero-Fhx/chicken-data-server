@@ -207,59 +207,6 @@ export const DishModel = {
     }
   },
 
-  async checkDishIngredientsStock (dishId, quantity = 1) {
-    try {
-      const { rows: ingredients } = await pool.query(`
-        SELECT 
-          di.ingredient_id,
-          i.name as ingredient_name,
-          di.quantity_used,
-          i.stock as available_stock,
-          i.unit
-        FROM dish_ingredients di
-        INNER JOIN ingredients i ON di.ingredient_id = i.ingredient_id
-        WHERE di.dish_id = $1 AND i.deleted_at IS NULL
-      `, [dishId])
-
-      if (ingredients.length === 0) {
-        return {
-          hasIngredients: false,
-          hasSufficientStock: true,
-          insufficientIngredients: []
-        }
-      }
-
-      const insufficientIngredients = []
-      let hasSufficientStock = true
-
-      for (const ing of ingredients) {
-        const requiredQuantity = parseFloat(ing.quantity_used) * quantity
-        const availableStock = parseFloat(ing.available_stock)
-        const isSufficient = availableStock >= requiredQuantity
-
-        if (!isSufficient) {
-          hasSufficientStock = false
-          insufficientIngredients.push({
-            ingredientId: ing.ingredient_id,
-            name: ing.ingredient_name,
-            required: requiredQuantity,
-            available: availableStock,
-            shortfall: requiredQuantity - availableStock,
-            unit: ing.unit
-          })
-        }
-      }
-
-      return {
-        hasIngredients: true,
-        hasSufficientStock,
-        insufficientIngredients
-      }
-    } catch (error) {
-      throw new InternalServerError(error.message)
-    }
-  },
-
   async delete (id) {
     try {
       const { rows: checkDishRows } = await pool.query(
