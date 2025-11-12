@@ -1237,37 +1237,51 @@ export const DashboardModel = {
     const weekStart = this._getWeekStart(now)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const query = `
+    const salesQuery = `
       SELECT 
-        (SELECT COALESCE(SUM(total), 0) FROM sales WHERE sale_date >= $1 AND status = 'Completed' AND deleted_at IS NULL) as today_sales,
-        (SELECT COALESCE(SUM(total), 0) FROM purchases WHERE purchase_date >= $1 AND deleted_at IS NULL) as today_purchases,
-        
-        (SELECT COALESCE(SUM(total), 0) FROM sales WHERE sale_date >= $2 AND status = 'Completed' AND deleted_at IS NULL) as week_sales,
-        (SELECT COALESCE(SUM(total), 0) FROM purchases WHERE purchase_date >= $2 AND deleted_at IS NULL) as week_purchases,
-        
-        (SELECT COALESCE(SUM(total), 0) FROM sales WHERE sale_date >= $3 AND status = 'Completed' AND deleted_at IS NULL) as month_sales,
-        (SELECT COALESCE(SUM(total), 0) FROM purchases WHERE purchase_date >= $3 AND deleted_at IS NULL) as month_purchases,
-        
-        (SELECT COALESCE(COUNT(*), 0) FROM sales WHERE sale_date >= $1 AND status = 'Completed' AND deleted_at IS NULL) as today_orders,
-        (SELECT COALESCE(COUNT(*), 0) FROM sales WHERE sale_date >= $2 AND status = 'Completed' AND deleted_at IS NULL) as week_orders,
-        (SELECT COALESCE(COUNT(*), 0) FROM sales WHERE sale_date >= $3 AND status = 'Completed' AND deleted_at IS NULL) as month_orders
+        COALESCE(SUM(CASE WHEN sale_date >= $1 THEN total ELSE 0 END), 0) as today_sales,
+        COALESCE(SUM(CASE WHEN sale_date >= $2 THEN total ELSE 0 END), 0) as week_sales,
+        COALESCE(SUM(CASE WHEN sale_date >= $3 THEN total ELSE 0 END), 0) as month_sales,
+
+        COALESCE(COUNT(CASE WHEN sale_date >= $1 THEN 1 END), 0) as today_orders,
+        COALESCE(COUNT(CASE WHEN sale_date >= $2 THEN 1 END), 0) as week_orders,
+        COALESCE(COUNT(CASE WHEN sale_date >= $3 THEN 1 END), 0) as month_orders
+      FROM sales
+      WHERE status = 'Completed' AND deleted_at IS NULL
+        AND sale_date >= $3 -- Optimización: solo escanear el último mes
     `
 
-    const result = await client.query(query, [
+    const purchasesQuery = `
+      SELECT 
+        COALESCE(SUM(CASE WHEN purchase_date >= $1 THEN total ELSE 0 END), 0) as today_purchases,
+        COALESCE(SUM(CASE WHEN purchase_date >= $2 THEN total ELSE 0 END), 0) as week_purchases,
+        COALESCE(SUM(CASE WHEN purchase_date >= $3 THEN total ELSE 0 END), 0) as month_purchases
+      FROM purchases
+      WHERE deleted_at IS NULL
+        AND purchase_date >= $3 -- Optimización: solo escanear el último mes
+    `
+
+    const params = [
       todayStart.toISOString().split('T')[0],
       weekStart.toISOString().split('T')[0],
       monthStart.toISOString().split('T')[0]
+    ]
+
+    const [salesResult, purchasesResult] = await Promise.all([
+      client.query(salesQuery, params),
+      client.query(purchasesQuery, params)
     ])
 
-    const row = result.rows[0]
+    const salesRow = salesResult.rows[0]
+    const purchasesRow = purchasesResult.rows[0]
 
-    const todaySales = parseFloat(row.today_sales) || 0
-    const todayPurchases = parseFloat(row.today_purchases) || 0
-    const weekSales = parseFloat(row.week_sales) || 0
-    const weekPurchases = parseFloat(row.week_purchases) || 0
-    const monthSales = parseFloat(row.month_sales) || 0
-    const monthPurchases = parseFloat(row.month_purchases) || 0
-    const monthOrders = parseInt(row.month_orders) || 0
+    const todaySales = parseFloat(salesRow.today_sales) || 0
+    const todayPurchases = parseFloat(purchasesRow.today_purchases) || 0
+    const weekSales = parseFloat(salesRow.week_sales) || 0
+    const weekPurchases = parseFloat(purchasesRow.week_purchases) || 0
+    const monthSales = parseFloat(salesRow.month_sales) || 0
+    const monthPurchases = parseFloat(purchasesRow.month_purchases) || 0
+    const monthOrders = parseInt(salesRow.month_orders) || 0
 
     return {
       profitMargin: {
@@ -1350,125 +1364,84 @@ export const DashboardModel = {
 
   async _getSalesComparisons (client) {
     const query = `
-      WITH current_periods AS (
-        SELECT
-          -- Hoy
-          COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE THEN total ELSE 0 END), 0) as today,
-          -- Semana actual
-          COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '6 days' AND sale_date <= CURRENT_DATE THEN total ELSE 0 END), 0) as this_week,
-          -- Mes actual
-          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_month,
-          -- Año actual
-          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_year
-        FROM sales
-        WHERE status = 'Completed'
-      ),
-      previous_periods AS (
-        SELECT
-          -- Ayer
-          COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE - INTERVAL '1 day' THEN total ELSE 0 END), 0) as yesterday,
-          -- Semana anterior
-          COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '13 days' AND sale_date <= CURRENT_DATE - INTERVAL '7 days' THEN total ELSE 0 END), 0) as last_week,
-          -- Mes anterior
-          COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN total ELSE 0 END), 0) as last_month,
-          -- Año anterior
-          COALESCE(SUM(CASE WHEN DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as last_year
-        FROM sales
-        WHERE status = 'Completed'
-      ),
-      same_day_last_year AS (
-        SELECT
-          COALESCE(SUM(total), 0) as same_day_last_year
-        FROM sales
-        WHERE sale_date = CURRENT_DATE - INTERVAL '1 year'
-          AND status = 'Completed'
-      ),
-      same_week_last_year AS (
-        SELECT
-          COALESCE(SUM(total), 0) as same_week_last_year
-        FROM sales
-        WHERE sale_date >= (CURRENT_DATE - INTERVAL '1 year') - INTERVAL '6 days'
-          AND sale_date <= (CURRENT_DATE - INTERVAL '1 year')
-          AND status = 'Completed'
-      ),
-      same_month_last_year AS (
-        SELECT
-          COALESCE(SUM(total), 0) as same_month_last_year
-        FROM sales
-        WHERE DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 year')
-          AND status = 'Completed'
-      )
       SELECT
-        cp.today,
-        pp.yesterday,
-        sdly.same_day_last_year,
-        CASE WHEN pp.yesterday > 0 THEN ROUND(((cp.today - pp.yesterday) / pp.yesterday * 100)::numeric, 1) ELSE NULL END as vs_yesterday_percent,
-        CASE WHEN sdly.same_day_last_year > 0 THEN ROUND(((cp.today - sdly.same_day_last_year) / sdly.same_day_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_day_last_year_percent,
-        
-        cp.this_week,
-        pp.last_week,
-        swly.same_week_last_year,
-        CASE WHEN pp.last_week > 0 THEN ROUND(((cp.this_week - pp.last_week) / pp.last_week * 100)::numeric, 1) ELSE NULL END as vs_last_week_percent,
-        CASE WHEN swly.same_week_last_year > 0 THEN ROUND(((cp.this_week - swly.same_week_last_year) / swly.same_week_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_week_last_year_percent,
-        
-        cp.this_month,
-        pp.last_month,
-        smly.same_month_last_year,
-        CASE WHEN pp.last_month > 0 THEN ROUND(((cp.this_month - pp.last_month) / pp.last_month * 100)::numeric, 1) ELSE NULL END as vs_last_month_percent,
-        CASE WHEN smly.same_month_last_year > 0 THEN ROUND(((cp.this_month - smly.same_month_last_year) / smly.same_month_last_year * 100)::numeric, 1) ELSE NULL END as vs_same_month_last_year_percent,
-        
-        cp.this_year,
-        pp.last_year,
-        CASE WHEN pp.last_year > 0 THEN ROUND(((cp.this_year - pp.last_year) / pp.last_year * 100)::numeric, 1) ELSE NULL END as vs_last_year_percent
-      FROM current_periods cp
-      CROSS JOIN previous_periods pp
-      CROSS JOIN same_day_last_year sdly
-      CROSS JOIN same_week_last_year swly
-      CROSS JOIN same_month_last_year smly
-    `
+        -- Hoy vs Ayer vs Mismo día año pasado
+        COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE THEN total ELSE 0 END), 0) as today,
+        COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE - INTERVAL '1 day' THEN total ELSE 0 END), 0) as yesterday,
+        COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE - INTERVAL '1 year' THEN total ELSE 0 END), 0) as same_day_last_year,
+
+        -- Semana vs Semana Pasada vs Misma semana año pasado
+        COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '6 days' AND sale_date <= CURRENT_DATE THEN total ELSE 0 END), 0) as this_week,
+        COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '13 days' AND sale_date <= CURRENT_DATE - INTERVAL '7 days' THEN total ELSE 0 END), 0) as last_week,
+        COALESCE(SUM(CASE WHEN sale_date >= (CURRENT_DATE - INTERVAL '1 year') - INTERVAL '6 days' AND sale_date <= (CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as same_week_last_year,
+
+        -- Mes vs Mes Pasado vs Mismo mes año pasado
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_month,
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') THEN total ELSE 0 END), 0) as last_month,
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as same_month_last_year,
+
+        -- Año vs Año Pasado
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_year,
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as last_year
+
+      FROM sales
+      WHERE 
+        status = 'Completed'
+        AND deleted_at IS NULL
+        -- Optimización: Solo escanear los últimos 2 años
+        AND sale_date >= DATE_TRUNC('year', CURRENT_DATE - INTERVAL '1 year') 
+      `
 
     const result = await client.query(query)
     const row = result.rows[0]
+
+    const vsYesterdayPercent = this._calculateGrowth(row.today, row.yesterday)
+    const vsSameDayLastYearPercent = this._calculateGrowth(row.today, row.same_day_last_year)
+    const vsLastWeekPercent = this._calculateGrowth(row.this_week, row.last_week)
+    const vsSameWeekLastYearPercent = this._calculateGrowth(row.this_week, row.same_week_last_year)
+    const vsLastMonthPercent = this._calculateGrowth(row.this_month, row.last_month)
+    const vsSameMonthLastYearPercent = this._calculateGrowth(row.this_month, row.same_month_last_year)
+    const vsLastYearPercent = this._calculateGrowth(row.this_year, row.last_year)
 
     return {
       today: {
         current: parseFloat(row.today),
         vsYesterday: {
           value: parseFloat(row.yesterday),
-          change: row.vs_yesterday_percent ? parseFloat(row.vs_yesterday_percent) : null
+          change: vsYesterdayPercent ? parseFloat(vsYesterdayPercent) : null
         },
         vsSameDayLastYear: {
           value: parseFloat(row.same_day_last_year),
-          change: row.vs_same_day_last_year_percent ? parseFloat(row.vs_same_day_last_year_percent) : null
+          change: vsSameDayLastYearPercent ? parseFloat(vsSameDayLastYearPercent) : null
         }
       },
       week: {
         current: parseFloat(row.this_week),
         vsLastWeek: {
           value: parseFloat(row.last_week),
-          change: row.vs_last_week_percent ? parseFloat(row.vs_last_week_percent) : null
+          change: vsLastWeekPercent ? parseFloat(vsLastWeekPercent) : null
         },
         vsSameWeekLastYear: {
           value: parseFloat(row.same_week_last_year),
-          change: row.vs_same_week_last_year_percent ? parseFloat(row.vs_same_week_last_year_percent) : null
+          change: vsSameWeekLastYearPercent ? parseFloat(vsSameWeekLastYearPercent) : null
         }
       },
       month: {
         current: parseFloat(row.this_month),
         vsLastMonth: {
           value: parseFloat(row.last_month),
-          change: row.vs_last_month_percent ? parseFloat(row.vs_last_month_percent) : null
+          change: vsLastMonthPercent ? parseFloat(vsLastMonthPercent) : null
         },
         vsSameMonthLastYear: {
           value: parseFloat(row.same_month_last_year),
-          change: row.vs_same_month_last_year_percent ? parseFloat(row.vs_same_month_last_year_percent) : null
+          change: vsSameMonthLastYearPercent ? parseFloat(vsSameMonthLastYearPercent) : null
         }
       },
       year: {
         current: parseFloat(row.this_year),
         vsLastYear: {
           value: parseFloat(row.last_year),
-          change: row.vs_last_year_percent ? parseFloat(row.vs_last_year_percent) : null
+          change: vsLastYearPercent ? parseFloat(vsLastYearPercent) : null
         }
       }
     }
