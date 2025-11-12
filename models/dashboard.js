@@ -101,7 +101,7 @@ export const DashboardModel = {
     try {
       const periodDays = this._parsePeriod(period)
       const startDate = new Date()
-      startDate.setDate(startDate.getDate() - periodDays)
+      startDate.setDate(startDate.getDate() - (periodDays - 1))
 
       const trends = {
         sales: await this._getSalesTrends(client, startDate, granularity, includeEmptyPeriods),
