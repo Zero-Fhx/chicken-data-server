@@ -1383,8 +1383,9 @@ export const DashboardModel = {
         COALESCE(SUM(CASE WHEN sale_date = CURRENT_DATE - INTERVAL '1 year' THEN total ELSE 0 END), 0) as same_day_last_year,
 
         -- Semana vs Semana Pasada vs Misma semana año pasado
-        COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '6 days' AND sale_date <= CURRENT_DATE THEN total ELSE 0 END), 0) as this_week,
-        COALESCE(SUM(CASE WHEN sale_date >= CURRENT_DATE - INTERVAL '13 days' AND sale_date <= CURRENT_DATE - INTERVAL '7 days' THEN total ELSE 0 END), 0) as last_week,
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('week', sale_date) = DATE_TRUNC('week', CURRENT_DATE) THEN total ELSE 0 END), 0) as this_week,
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('week', sale_date) = DATE_TRUNC('week', CURRENT_DATE - INTERVAL '1 week') THEN total ELSE 0 END), 0) as last_week,
+        COALESCE(SUM(CASE WHEN DATE_TRUNC('week', sale_date) = DATE_TRUNC('week', CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as same_week_last_year,
         COALESCE(SUM(CASE WHEN sale_date >= (CURRENT_DATE - INTERVAL '1 year') - INTERVAL '6 days' AND sale_date <= (CURRENT_DATE - INTERVAL '1 year') THEN total ELSE 0 END), 0) as same_week_last_year,
 
         -- Mes vs Mes Pasado vs Mismo mes año pasado
