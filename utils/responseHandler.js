@@ -18,17 +18,19 @@ export const handleResponse = async ({ res, status = 200, data = null, message =
 }
 
 export const handleError = async ({ res, status = 500, error = { message: 'Internal Server Error' } }) => {
+  const statusCode = (error && (error.statusCode || error.status)) || status
+
   const response = {
     success: false,
     error: {
-      type: error.constructor.name || 'Error',
-      message: error.message || error,
-      ...(error.details && { details: error.details })
+      type: (error && (error.constructor && error.constructor.name)) || 'Error',
+      message: (error && (error.message || error)) || 'Internal Server Error',
+      ...(error && error.details && { details: error.details })
     },
     timestamp: await TimestampService.getDbTimestamp()
   }
 
-  return res.status(status).json(response)
+  return res.status(statusCode).json(response)
 }
 
 export const handleValidationError = async ({ res, status = 400, error }) => {
@@ -37,7 +39,7 @@ export const handleValidationError = async ({ res, status = 400, error }) => {
     error: {
       type: 'ValidationError',
       message: 'Validation Failed',
-      ...(error && { details: JSON.parse(error.message) })
+      ...(error && { details: (error.issues || error.errors || error.message || error) })
     },
     timestamp: await TimestampService.getDbTimestamp()
   }
