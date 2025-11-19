@@ -5,6 +5,7 @@ export const DashboardRouter = Router()
 
 DashboardRouter.get('/', DashboardController.getEndpoints)
 DashboardRouter.get('/stats', DashboardController.getStats)
+DashboardRouter.get('/stats/financial', DashboardController.getFinancialStats)
 DashboardRouter.get('/stats/sales', DashboardController.getSalesStats)
 DashboardRouter.get('/stats/purchases', DashboardController.getPurchasesStats)
 DashboardRouter.get('/stats/inventory', DashboardController.getInventoryStats)

@@ -24,6 +24,18 @@ export const DashboardModel = {
     }
   },
 
+  async getFinancialStats () {
+    const client = await pool.connect()
+    try {
+      return await this._getFinancialMetrics(client)
+    } catch (error) {
+      console.error('Error fetching financial stats:', error)
+      throw new InternalServerError('Failed to fetch financial statistics')
+    } finally {
+      client.release()
+    }
+  },
+
   async getSalesStats () {
     const client = await pool.connect()
     try {

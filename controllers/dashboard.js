@@ -10,6 +10,11 @@ export const DashboardController = {
         method: 'GET',
         description: 'Obtiene todas las estadísticas agregadas del dashboard (ventas, compras, inventario, platos, proveedores y actividad reciente)'
       },
+      financial: {
+        url: `${baseUrl}/stats/financial`,
+        method: 'GET',
+        description: 'Obtiene métricas financieras (margen de beneficio, ROI, costos, ganancias)'
+      },
       sales: {
         url: `${baseUrl}/stats/sales`,
         method: 'GET',
@@ -158,6 +163,19 @@ export const DashboardController = {
         res,
         data: suppliers,
         message: 'Suppliers statistics retrieved successfully'
+      })
+    } catch (error) {
+      await handleError({ res, status: error.statusCode || 500, error })
+    }
+  },
+
+  async getFinancialStats (req, res) {
+    try {
+      const financial = await DashboardModel.getFinancialStats()
+      await handleResponse({
+        res,
+        data: financial,
+        message: 'Financial statistics retrieved successfully'
       })
     } catch (error) {
       await handleError({ res, status: error.statusCode || 500, error })
