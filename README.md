@@ -254,7 +254,7 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 
 - [Documentación de Express](https://expressjs.com/)
 - [Documentación de Zod](https://zod.dev/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Documentación de PostgreSQL](https://www.postgresql.org/docs/)
 
 ---
 
