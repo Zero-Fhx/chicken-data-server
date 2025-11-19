@@ -62,7 +62,7 @@ GET /health
 {
   "status": "ok",
   "database": "connected",
-  "timestamp": "2025-10-20T12:00:00.000Z"
+  "timestamp": "2025-11-19T16:00:00.000Z"
 }
 ```
 
@@ -70,15 +70,16 @@ GET /health
 
 ### Recursos Principales
 
-| Recurso                        | Endpoints agrupados                                                | Descripción                            |
-| ------------------------------ | ------------------------------------------------------------------ | -------------------------------------- |
-| **Platillos**                  | `/api/dishes`<br>`/api/dishes/:id`<br>`/api/dishes/:dishId/recipe` | Gestión de platillos y recetas         |
-| **Categorías de Platillos**    | `/api/dish-categories`<br>`/api/dish-categories/:id`               | Categorías para organizar platillos    |
-| **Ingredientes**               | `/api/ingredients`<br>`/api/ingredients/:id`                       | Gestión de ingredientes                |
-| **Categorías de Ingredientes** | `/api/ingredient-categories`<br>`/api/ingredient-categories/:id`   | Categorías para organizar ingredientes |
-| **Proveedores**                | `/api/suppliers`<br>`/api/suppliers/:id`                           | Gestión de proveedores                 |
-| **Compras**                    | `/api/purchases`<br>`/api/purchases/:id`                           | Registro de compras de ingredientes    |
-| **Ventas**                     | `/api/sales`<br>`/api/sales/:id`                                   | Registro de ventas de platillos        |
+| Recurso                        | Endpoints agrupados                                              | Descripción                            |
+| ------------------------------ | ---------------------------------------------------------------- | -------------------------------------- |
+| **Platillos**                  | `/api/dishes`<br>`/api/dishes/:id`                               | Gestión de platillos y recetas         |
+| **Categorías de Platillos**    | `/api/dish-categories`<br>`/api/dish-categories/:id`             | Categorías para organizar platillos    |
+| **Ingredientes**               | `/api/ingredients`<br>`/api/ingredients/:id`                     | Gestión de ingredientes                |
+| **Categorías de Ingredientes** | `/api/ingredient-categories`<br>`/api/ingredient-categories/:id` | Categorías para organizar ingredientes |
+| **Proveedores**                | `/api/suppliers`<br>`/api/suppliers/:id`                         | Gestión de proveedores                 |
+| **Compras**                    | `/api/purchases`<br>`/api/purchases/:id`                         | Registro de compras de ingredientes    |
+| **Ventas**                     | `/api/sales`<br>`/api/sales/:id`                                 | Registro de ventas de platillos        |
+| **Dashboard**                  | `/api/dashboard`                                                 | Estadísticas y reportes                |
 
 ### Documentación Detallada
 
@@ -90,6 +91,7 @@ GET /health
 - [📖 Proveedores (Suppliers)](./docs/suppliers.md)
 - [📖 Compras (Purchases)](./docs/purchases.md)
 - [📖 Ventas (Sales)](./docs/sales.md)
+- [📖 Dashboard](./docs/dashboard.md)
 
 ## 🔗 Endpoints Principales
 
@@ -108,17 +110,24 @@ GET /
   "message": "Chicken Data API",
   "endpoints": {
     "health": "/health",
+    "dashboard": "/api/dashboard",
     "dishes": {
       "list": "/api/dishes",
       "categories": "/api/dish-categories"
     },
-    "suppliers": { "list": "/api/suppliers" },
     "ingredients": {
       "list": "/api/ingredients",
       "categories": "/api/ingredient-categories"
     },
-    "purchases": { "list": "/api/purchases" },
-    "sales": { "list": "/api/sales" }
+    "suppliers": {
+      "list": "/api/suppliers"
+    },
+    "purchases": {
+      "list": "/api/purchases"
+    },
+    "sales": {
+      "list": "/api/sales"
+    }
   }
 }
 ```
@@ -134,8 +143,11 @@ Todas las respuestas de la API siguen un formato JSON consistente:
   "success": true,
   "message": "Operación completada exitosamente",
   "data": [
-    { "id": 1, "name": "Item 1" },
-    { "id": 2, "name": "Item 2" }
+    {
+      "id": 1,
+      "name": "Item 1"
+    }
+    // ...
   ],
   "meta": {
     "pagination": {
@@ -147,7 +159,7 @@ Todas las respuestas de la API siguen un formato JSON consistente:
       "hasPrevPage": false
     }
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
@@ -161,7 +173,7 @@ Todas las respuestas de la API siguen un formato JSON consistente:
     "id": 1,
     "name": "Item"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
@@ -172,23 +184,7 @@ Todas las respuestas de la API siguen un formato JSON consistente:
   "success": false,
   "message": "Descripción del error",
   "error": "Detalles adicionales del error",
-  "timestamp": "2025-10-20T19:28:47.212Z"
-}
-```
-
-### Errores de Validación
-
-```json
-{
-  "success": false,
-  "message": "Validation error",
-  "errors": [
-    {
-      "field": "name",
-      "message": "Name is required"
-    }
-  ],
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
@@ -262,6 +258,6 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 
 ---
 
-**Versión:** 2.0.0  
-**Descripción:** Migración a PostgreSQL completada, mejora en la estructura de endpoints y documentación.  
-**Última actualización:** Octubre 2025 (Migrado a PostgreSQL)
+**Versión:** 2.1.0
+**Descripción:** Mejora en la estructura de endpoints y documentación.
+**Última actualización:** Noviembre 2025

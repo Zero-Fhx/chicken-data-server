@@ -1,43 +1,45 @@
-# 🏪 Proveedores (Suppliers)
+# 🚚 Proveedores (Suppliers)
 
-Gestión de proveedores de ingredientes.
+Gestión de proveedores de insumos.
 
-## Descripción
+## 📋 Estructura del Objeto
 
-Este recurso permite administrar la información de los proveedores que abastecen ingredientes al restaurante, incluyendo datos de contacto y estado.
+| Campo           | Tipo     | Descripción                                  |
+| :-------------- | :------- | :------------------------------------------- |
+| `id`            | `number` | Identificador único del proveedor.           |
+| `name`          | `string` | Razón social o nombre del proveedor.         |
+| `ruc`           | `string` | Registro Único de Contribuyentes (opcional). |
+| `phone`         | `string` | Teléfono de contacto.                        |
+| `email`         | `string` | Correo electrónico.                          |
+| `address`       | `string` | Dirección física.                            |
+| `contactPerson` | `string` | Nombre de la persona de contacto.            |
+| `status`        | `string` | Estado del proveedor: `Active` o `Inactive`. |
 
-## Endpoints Disponibles
+## 🔗 Endpoints
 
-| Método   | Endpoint             | Descripción                   |
-| -------- | -------------------- | ----------------------------- |
-| `GET`    | `/api/suppliers`     | Obtener todos los proveedores |
-| `GET`    | `/api/suppliers/:id` | Obtener un proveedor por ID   |
-| `POST`   | `/api/suppliers`     | Crear un nuevo proveedor      |
-| `PATCH`  | `/api/suppliers/:id` | Actualizar un proveedor       |
-| `DELETE` | `/api/suppliers/:id` | Eliminar un proveedor         |
+### 1. Listar Proveedores
 
----
+Obtiene una lista paginada de proveedores.
 
-## GET /api/suppliers
+**URL:** `/api/suppliers`
+**Método:** `GET`
 
-Obtiene una lista paginada de todos los proveedores.
+**Parámetros de Consulta (Query Params):**
 
-### Parámetros de Consulta
+| Parámetro  | Tipo     | Descripción                                   |
+| :--------- | :------- | :-------------------------------------------- |
+| `page`     | `number` | Número de página (default: 1).                |
+| `pageSize` | `number` | Cantidad por página (default: 10).            |
+| `search`   | `string` | Buscar por nombre, RUC o persona de contacto. |
+| `status`   | `string` | Filtrar por estado (`Active`/`Inactive`).     |
 
-| Parámetro  | Tipo     | Obligatorio | Descripción                                  |
-| ---------- | -------- | ----------- | -------------------------------------------- |
-| `page`     | `number` | No          | Número de página (por defecto: `1`)          |
-| `pageSize` | `number` | No          | Elementos por página (por defecto: `10`)     |
-| `search`   | `string` | No          | Buscar por nombre, RUC o persona de contacto |
-| `status`   | `string` | No          | Filtrar por estado (`Active` o `Inactive`)   |
+**Ejemplo de Solicitud:**
 
-### Ejemplo de Solicitud
-
-```http
-GET /api/suppliers?page=1&pageSize=10&status=Active
+```bash
+curl -X GET "http://localhost:3000/api/suppliers?page=1&pageSize=10"
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
@@ -45,314 +47,161 @@ GET /api/suppliers?page=1&pageSize=10&status=Active
   "message": "Suppliers retrieved successfully",
   "data": [
     {
-      "id": 1,
-      "name": "Distribuidora Avícola El Pollo Feliz",
-      "ruc": "20123456789",
-      "phone": "+51-987654321",
-      "email": "ventas@pollofeliz.com",
-      "address": "Av. Industrial 123, Lima",
-      "contactPerson": "Juan Pérez",
-      "status": "Active"
-    },
-    {
-      "id": 2,
-      "name": "Abarrotes Don José",
-      "ruc": "20987654321",
-      "phone": "+51-912345678",
-      "email": "contacto@donjose.com",
-      "address": "Jr. Comercio 456, Lima",
-      "contactPerson": "María García",
+      "id": 10,
+      "name": "Pescados y Mariscos del Pacífico",
+      "ruc": "20012345670",
+      "phone": "909876543",
+      "email": "contacto@mariscos-pacifico.com",
+      "address": "Muelle Pesquero 707, Chucuito",
+      "contactPerson": "Javier Ramos",
       "status": "Active"
     }
+    // ...
   ],
   "meta": {
     "pagination": {
       "page": 1,
       "pageSize": 10,
       "pageCount": 1,
-      "total": 2,
+      "total": 10,
       "hasNextPage": false,
       "hasPrevPage": false
-    },
-    "filters": {
-      "status": "Active"
     }
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:40.432Z"
 }
 ```
 
----
+### 2. Obtener Proveedor por ID
 
-## GET /api/suppliers/:id
+Obtiene los detalles de un proveedor específico.
 
-Obtiene un proveedor específico por su ID.
+**URL:** `/api/suppliers/:id`
+**Método:** `GET`
 
-### Parámetros de Ruta
+**Ejemplo de Solicitud:**
 
-| Parámetro | Tipo     | Obligatorio | Descripción      |
-| --------- | -------- | ----------- | ---------------- |
-| `id`      | `number` | Sí          | ID del proveedor |
-
-### Ejemplo de Solicitud
-
-```http
-GET /api/suppliers/1
+```bash
+curl -X GET "http://localhost:3000/api/suppliers/10"
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Supplier retrieved successfully",
   "data": {
-    "id": 1,
-    "name": "Distribuidora Avícola El Pollo Feliz",
-    "ruc": "20123456789",
-    "phone": "+51-987654321",
-    "email": "ventas@pollofeliz.com",
-    "address": "Av. Industrial 123, Lima",
-    "contactPerson": "Juan Pérez",
+    "id": 10,
+    "name": "Pescados y Mariscos del Pacífico",
+    "ruc": "20012345670",
+    "phone": "909876543",
+    "email": "contacto@mariscos-pacifico.com",
+    "address": "Muelle Pesquero 707, Chucuito",
+    "contactPerson": "Javier Ramos",
     "status": "Active"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:40.432Z"
 }
 ```
 
-### Códigos de Estado
+### 3. Crear Proveedor
 
-- `200` - Proveedor encontrado exitosamente
-- `400` - ID inválido
-- `404` - Proveedor no encontrado
+Registra un nuevo proveedor.
 
----
+**URL:** `/api/suppliers`
+**Método:** `POST`
+**Headers:** `Content-Type: application/json`
 
-## POST /api/suppliers
+**Cuerpo de la Solicitud (Body):**
 
-Crea un nuevo proveedor en el sistema.
-
-### Cuerpo de la Solicitud
-
-| Campo           | Tipo     | Obligatorio | Descripción                                            |
-| --------------- | -------- | ----------- | ------------------------------------------------------ |
-| `name`          | `string` | Sí          | Nombre del proveedor                                   |
-| `ruc`           | `string` | No          | RUC o identificación fiscal (máx. 20 caracteres)       |
-| `phone`         | `string` | No          | Número de teléfono (máx. 20 caracteres)                |
-| `email`         | `string` | No          | Correo electrónico (debe ser formato válido)           |
-| `address`       | `string` | No          | Dirección física (máx. 150 caracteres)                 |
-| `contactPerson` | `string` | No          | Nombre de la persona de contacto (máx. 100 caracteres) |
-| `status`        | `string` | No          | Estado: `Active` o `Inactive` (por defecto: `Active`)  |
-
-### Validaciones y Restricciones
-
-| Campo           | Validación                                                   |
-| --------------- | ------------------------------------------------------------ |
-| `name`          | Requerido, debe ser un string no vacío                       |
-| `ruc`           | Opcional, máximo 20 caracteres, puede ser `null`             |
-| `phone`         | Opcional, máximo 20 caracteres, puede ser `null`             |
-| `email`         | Opcional, debe ser formato de email válido, puede ser `null` |
-| `address`       | Opcional, máximo 150 caracteres, puede ser `null`            |
-| `contactPerson` | Opcional, máximo 100 caracteres, puede ser `null`            |
-| `status`        | Opcional, debe ser `Active` o `Inactive`                     |
-
-### Ejemplo de Solicitud
-
-```http
-POST /api/suppliers
-Content-Type: application/json
-
+```json
 {
-  "name": "Verduras Frescas SAC",
-  "ruc": "20111222333",
-  "phone": "+51-998877665",
-  "email": "ventas@verdurasfrescas.com",
-  "address": "Av. Agrícola 789, Lima",
-  "contactPerson": "Carlos Mendoza",
+  "name": "Nuevo Proveedor S.A.C.",
+  "ruc": "20123456789",
+  "phone": "987654321",
+  "email": "ventas@nuevoproveedor.com",
+  "address": "Av. Principal 123",
+  "contactPerson": "Juan Pérez",
   "status": "Active"
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Supplier created successfully",
   "data": {
-    "id": 3,
-    "name": "Verduras Frescas SAC",
-    "ruc": "20111222333",
-    "phone": "+51-998877665",
-    "email": "ventas@verdurasfrescas.com",
-    "address": "Av. Agrícola 789, Lima",
-    "contactPerson": "Carlos Mendoza",
+    "id": 11,
+    "name": "Nuevo Proveedor S.A.C.",
+    "ruc": "20123456789",
+    "phone": "987654321",
+    "email": "ventas@nuevoproveedor.com",
+    "address": "Av. Principal 123",
+    "contactPerson": "Juan Pérez",
     "status": "Active"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:40.432Z"
 }
 ```
 
-### Códigos de Estado
+### 4. Actualizar Proveedor
 
-- `201` - Proveedor creado exitosamente
-- `400` - Datos de entrada inválidos
+Actualiza los datos de un proveedor existente.
 
----
+**URL:** `/api/suppliers/:id`
+**Método:** `PATCH`
+**Headers:** `Content-Type: application/json`
 
-## PATCH /api/suppliers/:id
+**Cuerpo de la Solicitud (Body):**
 
-Actualiza un proveedor existente. Solo se actualizan los campos proporcionados.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción                   |
-| --------- | -------- | ----------- | ----------------------------- |
-| `id`      | `number` | Sí          | ID del proveedor a actualizar |
-
-### Cuerpo de la Solicitud
-
-| Campo           | Tipo     | Obligatorio | Descripción                         |
-| --------------- | -------- | ----------- | ----------------------------------- |
-| `name`          | `string` | No          | Nuevo nombre del proveedor          |
-| `ruc`           | `string` | No          | Nuevo RUC                           |
-| `phone`         | `string` | No          | Nuevo teléfono                      |
-| `email`         | `string` | No          | Nuevo email                         |
-| `address`       | `string` | No          | Nueva dirección                     |
-| `contactPerson` | `string` | No          | Nueva persona de contacto           |
-| `status`        | `string` | No          | Nuevo estado: `Active` o `Inactive` |
-
-### Validaciones y Restricciones
-
-| Campo           | Validación                                                            |
-| --------------- | --------------------------------------------------------------------- |
-| `name`          | Si se proporciona, debe ser un string no vacío                        |
-| `ruc`           | Si se proporciona, máximo 20 caracteres, puede ser `null`             |
-| `phone`         | Si se proporciona, máximo 20 caracteres, puede ser `null`             |
-| `email`         | Si se proporciona, debe ser formato de email válido, puede ser `null` |
-| `address`       | Si se proporciona, máximo 150 caracteres, puede ser `null`            |
-| `contactPerson` | Si se proporciona, máximo 100 caracteres, puede ser `null`            |
-| `status`        | Si se proporciona, debe ser `Active` o `Inactive`                     |
-
-### Ejemplo de Solicitud
-
-```http
-PATCH /api/suppliers/3
-Content-Type: application/json
-
+```json
 {
-  "phone": "+51-999888777",
-  "email": "nuevoemail@verdurasfrescas.com"
+  "phone": "999888777",
+  "contactPerson": "María López"
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Supplier updated successfully",
   "data": {
-    "id": 3,
-    "name": "Verduras Frescas SAC",
-    "ruc": "20111222333",
-    "phone": "+51-999888777",
-    "email": "nuevoemail@verdurasfrescas.com",
-    "address": "Av. Agrícola 789, Lima",
-    "contactPerson": "Carlos Mendoza",
+    "id": 10,
+    "name": "Pescados y Mariscos del Pacífico",
+    "ruc": "20012345670",
+    "phone": "999888777",
+    "email": "contacto@mariscos-pacifico.com",
+    "address": "Muelle Pesquero 707, Chucuito",
+    "contactPerson": "María López",
     "status": "Active"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:40.432Z"
 }
 ```
 
-### Códigos de Estado
+### 5. Eliminar Proveedor
 
-- `200` - Proveedor actualizado exitosamente
-- `400` - Datos de entrada inválidos o ID inválido
-- `404` - Proveedor no encontrado
+Marca un proveedor como eliminado (soft delete).
 
----
+**URL:** `/api/suppliers/:id`
+**Método:** `DELETE`
 
-## DELETE /api/suppliers/:id
-
-Elimina un proveedor del sistema.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción                 |
-| --------- | -------- | ----------- | --------------------------- |
-| `id`      | `number` | Sí          | ID del proveedor a eliminar |
-
-### Ejemplo de Solicitud
-
-```http
-DELETE /api/suppliers/3
-```
-
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Supplier deleted successfully",
   "data": {
-    "id": 3,
-    "name": "Verduras Frescas SAC",
-    "ruc": "20111222333",
-    "phone": "+51-999888777",
-    "email": "nuevoemail@verdurasfrescas.com",
-    "address": "Av. Agrícola 789, Lima",
-    "contactPerson": "Carlos Mendoza",
-    "status": "Active"
+    "id": 10,
+    "name": "Pescados y Mariscos del Pacífico",
+    "status": "Inactive"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:40.432Z"
 }
 ```
-
-### Códigos de Estado
-
-- `200` - Proveedor eliminado exitosamente
-- `400` - ID inválido
-- `404` - Proveedor no encontrado
-
----
-
-## Estructura de Datos
-
-### Objeto Supplier
-
-```typescript
-{
-  id: number; // ID único del proveedor
-  name: string; // Nombre o razón social del proveedor
-  ruc?: string; // RUC o identificación fiscal (opcional)
-  phone?: string; // Número de teléfono (opcional)
-  email?: string; // Correo electrónico (opcional)
-  address?: string; // Dirección física (opcional)
-  contactPerson?: string; // Nombre de persona de contacto (opcional)
-  status: "Active" | "Inactive"; // Estado del proveedor
-}
-```
-
----
-
-## Relaciones con Otros Recursos
-
-- **Compras**: Un proveedor puede tener múltiples compras asociadas → [Ver documentación](./purchases.md)
-
----
-
-## Notas Adicionales
-
-- Los campos opcionales solo se incluyen en la respuesta si tienen valores.
-- El campo `email` debe tener un formato válido si se proporciona.
-- Se recomienda incluir al menos un método de contacto (teléfono o email).
-- El campo `contactPerson` es útil para identificar rápidamente con quién coordinar pedidos.
-- Los proveedores pueden marcarse como `Inactive` sin eliminarlos para mantener el historial de compras.
-- **Los datos no se eliminan físicamente**: Al eliminar un proveedor, se marca con `deleted_at` (soft delete) pero permanece en la base de datos para mantener el historial.
-- Los campos `createdAt`, `updatedAt` y `deleted_at` no se incluyen en las respuestas de la API.
-
----
-
-[← Volver al índice](../README.md)

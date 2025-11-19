@@ -1,464 +1,152 @@
-# 📝 Recetas de Platillos (Dish Ingredients)
+# 🍲 Recetas de Platillos (Dish Ingredients)
 
-Gestión de ingredientes asociados a cada platillo (recetas).
+Gestión de los ingredientes que componen un platillo (Receta).
 
-## Descripción
+## 🔗 Endpoints
 
-Este recurso permite administrar la relación entre platillos e ingredientes, especificando qué ingredientes se necesitan para preparar cada platillo y en qué cantidades. Esto es esencial para controlar el inventario y calcular costos.
+### 1. Obtener Receta
 
-## Endpoints Disponibles
+Obtiene la lista de ingredientes asociados a un platillo.
 
-| Método   | Endpoint                                    | Descripción                               |
-| -------- | ------------------------------------------- | ----------------------------------------- |
-| `GET`    | `/api/dishes/:dishId/recipe`                | Obtener la receta completa de un platillo |
-| `POST`   | `/api/dishes/:dishId/recipe`                | Agregar un ingrediente a la receta        |
-| `PUT`    | `/api/dishes/:dishId/recipe`                | Reemplazar toda la receta del platillo    |
-| `PATCH`  | `/api/dishes/:dishId/recipe/:ingredientId`  | Actualizar cantidad de un ingrediente     |
-| `DELETE` | `/api/dishes/:dishId/recipe/:ingredientId`  | Eliminar un ingrediente de la receta      |
+**URL:** `/api/dishes/:dishId/recipe`
+**Método:** `GET`
 
----
+**Ejemplo de Solicitud:**
 
-## GET /api/dishes/:dishId/recipe
-
-Obtiene la receta completa de un platillo, incluyendo todos los ingredientes y cantidades necesarias.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción     |
-| --------- | -------- | ----------- | --------------- |
-| `dishId`  | `number` | Sí          | ID del platillo |
-
-### Ejemplo de Solicitud
-
-```http
-GET /api/dishes/1/recipe
+```bash
+curl -X GET "http://localhost:3000/api/dishes/35/recipe"
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
-  "message": "Dish recipe retrieved successfully",
+  "message": "Recipe retrieved successfully",
   "data": [
     {
-      "id": 1,
-      "dishId": 1,
-      "quantityUsed": 1.5,
-      "ingredient": {
-        "id": 1,
-        "name": "Pollo Entero",
-        "unit": "kg",
-        "stock": 45.5
-      }
-    },
-    {
-      "id": 2,
-      "dishId": 1,
+      "dishIngredientId": 101,
+      "ingredientId": 1,
+      "name": "Pollo Entero (2.0kg)",
       "quantityUsed": 0.5,
-      "ingredient": {
-        "id": 5,
-        "name": "Papas",
-        "unit": "kg",
-        "stock": 30.0
-      }
-    },
-    {
-      "id": 3,
-      "dishId": 1,
-      "quantityUsed": 0.1,
-      "ingredient": {
-        "id": 8,
-        "name": "Ají Especial",
-        "unit": "kg",
-        "stock": 5.0
-      }
+      "unit": "unidad"
     }
   ],
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
-### Códigos de Estado
+### 2. Agregar Ingrediente a Receta
 
-- `200` - Receta encontrada exitosamente
-- `400` - ID del platillo inválido
-- `404` - Platillo no encontrado
+Agrega un ingrediente a la receta de un platillo.
 
----
+**URL:** `/api/dishes/:dishId/recipe`
+**Método:** `POST`
+**Headers:** `Content-Type: application/json`
 
-## POST /api/dishes/:dishId/recipe
+**Cuerpo de la Solicitud (Body):**
 
-Agrega un nuevo ingrediente a la receta de un platillo.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción     |
-| --------- | -------- | ----------- | --------------- |
-| `dishId`  | `number` | Sí          | ID del platillo |
-
-### Cuerpo de la Solicitud
-
-| Campo           | Tipo     | Obligatorio | Descripción                                       |
-| --------------- | -------- | ----------- | ------------------------------------------------- |
-| `ingredient_id` | `number` | Sí          | ID del ingrediente a agregar                      |
-| `quantity_used` | `number` | Sí          | Cantidad necesaria del ingrediente (debe ser > 0) |
-
-### Validaciones y Restricciones
-
-| Campo           | Validación                                           |
-| --------------- | ---------------------------------------------------- |
-| `ingredient_id` | Requerido, debe ser un número entero positivo válido |
-| `quantity_used` | Requerido, debe ser un número > 0                    |
-
-### Ejemplo de Solicitud
-
-```http
-POST /api/dishes/1/recipe
-Content-Type: application/json
-
+```json
 {
-  "ingredient_id": 12,
-  "quantity_used": 0.2
+  "ingredientId": 1,
+  "quantityUsed": 0.5
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
-  "message": "Ingredient added to dish successfully",
+  "message": "Ingredient added to recipe successfully",
   "data": {
-    "id": 4,
-    "dishId": 1,
-    "quantityUsed": 0.2,
-    "ingredient": {
-      "id": 12,
-      "name": "Limón",
-      "unit": "kg"
-    }
+    "dishIngredientId": 102,
+    "dishId": 35,
+    "ingredientId": 1,
+    "quantityUsed": 0.5
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
-### Códigos de Estado
+### 3. Reemplazar Receta Completa
 
-- `201` - Ingrediente agregado exitosamente
-- `400` - Datos de entrada inválidos o el ingrediente ya existe en la receta
-- `404` - Platillo o ingrediente no encontrado
+Reemplaza todos los ingredientes de la receta de un platillo.
 
----
+**URL:** `/api/dishes/:dishId/recipe`
+**Método:** `PUT`
+**Headers:** `Content-Type: application/json`
 
-## PUT /api/dishes/:dishId/recipe
+**Cuerpo de la Solicitud (Body):**
 
-Reemplaza completamente la receta de un platillo con una nueva lista de ingredientes.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción     |
-| --------- | -------- | ----------- | --------------- |
-| `dishId`  | `number` | Sí          | ID del platillo |
-
-### Cuerpo de la Solicitud
-
-| Campo         | Tipo    | Obligatorio | Descripción                                                      |
-| ------------- | ------- | ----------- | ---------------------------------------------------------------- |
-| `ingredients` | `array` | No          | Array de ingredientes (puede estar vacío para limpiar la receta) |
-
-#### Estructura de `ingredients`
-
-| Campo           | Tipo     | Obligatorio | Descripción                       |
-| --------------- | -------- | ----------- | --------------------------------- |
-| `ingredient_id` | `number` | Sí          | ID del ingrediente                |
-| `quantity_used` | `number` | Sí          | Cantidad necesaria (debe ser > 0) |
-
-### Validaciones y Restricciones
-
-| Campo                         | Validación                                           |
-| ----------------------------- | ---------------------------------------------------- |
-| `ingredients`                 | Opcional, array de objetos                           |
-| `ingredients[].ingredient_id` | Requerido, debe ser un número entero positivo válido |
-| `ingredients[].quantity_used` | Requerido, debe ser un número > 0                    |
-
-### Ejemplo de Solicitud
-
-```http
-PUT /api/dishes/1/recipe
-Content-Type: application/json
-
+```json
 {
   "ingredients": [
-    {
-      "ingredient_id": 1,
-      "quantity_used": 1.5
-    },
-    {
-      "ingredient_id": 5,
-      "quantity_used": 0.5
-    },
-    {
-      "ingredient_id": 8,
-      "quantity_used": 0.1
-    },
-    {
-      "ingredient_id": 12,
-      "quantity_used": 0.2
-    }
+    { "ingredientId": 1, "quantityUsed": 0.5 },
+    { "ingredientId": 13, "quantityUsed": 0.2 }
   ]
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
-  "message": "Dish recipe replaced successfully",
+  "message": "Recipe replaced successfully",
   "data": [
-    {
-      "id": 1,
-      "dishId": 1,
-      "quantityUsed": 1.5,
-      "ingredient": {
-        "id": 1,
-        "name": "Pollo Entero",
-        "unit": "kg"
-      }
-    },
-    {
-      "id": 2,
-      "dishId": 1,
-      "quantityUsed": 0.5,
-      "ingredient": {
-        "id": 5,
-        "name": "Papas",
-        "unit": "kg"
-      }
-    },
-    {
-      "id": 3,
-      "dishId": 1,
-      "quantityUsed": 0.1,
-      "ingredient": {
-        "id": 8,
-        "name": "Ají Especial",
-        "unit": "kg"
-      }
-    },
-    {
-      "id": 4,
-      "dishId": 1,
-      "quantityUsed": 0.2,
-      "ingredient": {
-        "id": 12,
-        "name": "Limón",
-        "unit": "kg"
-      }
-    }
+    { "dishIngredientId": 103, "ingredientId": 1, "quantityUsed": 0.5 },
+    { "dishIngredientId": 104, "ingredientId": 13, "quantityUsed": 0.2 }
   ],
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
-### Códigos de Estado
+### 4. Actualizar Cantidad de Ingrediente
 
-- `200` - Receta reemplazada exitosamente
-- `400` - Datos de entrada inválidos o ingredientes duplicados
-- `404` - Platillo o ingrediente no encontrado
+Actualiza la cantidad usada de un ingrediente específico en la receta.
 
----
+**URL:** `/api/dishes/:dishId/recipe/:ingredientId`
+**Método:** `PATCH`
+**Headers:** `Content-Type: application/json`
 
-## PATCH /api/dishes/:dishId/recipe/:ingredientId
+**Cuerpo de la Solicitud (Body):**
 
-Actualiza la cantidad necesaria de un ingrediente específico en la receta.
-
-### Parámetros de Ruta
-
-| Parámetro      | Tipo     | Obligatorio | Descripción        |
-| -------------- | -------- | ----------- | ------------------ |
-| `dishId`       | `number` | Sí          | ID del platillo    |
-| `ingredientId` | `number` | Sí          | ID del ingrediente |
-
-### Cuerpo de la Solicitud
-
-| Campo           | Tipo     | Obligatorio | Descripción                             |
-| --------------- | -------- | ----------- | --------------------------------------- |
-| `quantity_used` | `number` | Sí          | Nueva cantidad necesaria (debe ser > 0) |
-
-### Validaciones y Restricciones
-
-| Campo           | Validación                        |
-| --------------- | --------------------------------- |
-| `quantity_used` | Requerido, debe ser un número > 0 |
-
-### Ejemplo de Solicitud
-
-```http
-PATCH /api/dishes/1/recipe/5
-Content-Type: application/json
-
+```json
 {
-  "quantity_used": 0.6
+  "quantityUsed": 0.75
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Ingredient quantity updated successfully",
   "data": {
-    "id": 2,
-    "dishId": 1,
-    "quantityUsed": 0.6,
-    "ingredient": {
-      "id": 5,
-      "name": "Papas",
-      "unit": "kg"
-    }
+    "dishIngredientId": 103,
+    "dishId": 35,
+    "ingredientId": 1,
+    "quantityUsed": 0.75
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
 
-### Códigos de Estado
-
-- `200` - Cantidad actualizada exitosamente
-- `400` - Datos de entrada inválidos o IDs inválidos
-- `404` - Platillo, ingrediente o relación no encontrada
-
----
-
-## DELETE /api/dishes/:dishId/recipe/:ingredientId
+### 5. Eliminar Ingrediente de Receta
 
 Elimina un ingrediente de la receta de un platillo.
 
-### Parámetros de Ruta
+**URL:** `/api/dishes/:dishId/recipe/:ingredientId`
+**Método:** `DELETE`
 
-| Parámetro      | Tipo     | Obligatorio | Descripción                   |
-| -------------- | -------- | ----------- | ----------------------------- |
-| `dishId`       | `number` | Sí          | ID del platillo               |
-| `ingredientId` | `number` | Sí          | ID del ingrediente a eliminar |
-
-### Ejemplo de Solicitud
-
-```http
-DELETE /api/dishes/1/recipe/12
-```
-
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
-  "message": "Ingredient removed from dish successfully",
-  "data": {
-    "id": 4,
-    "dishId": 1,
-    "quantityUsed": 0.2,
-    "ingredient": {
-      "id": 12,
-      "name": "Limón",
-      "unit": "kg"
-    }
-  },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "message": "Ingredient removed from recipe successfully",
+  "timestamp": "2025-11-19T16:10:30.188Z"
 }
 ```
-
-### Códigos de Estado
-
-- `200` - Ingrediente eliminado exitosamente
-- `400` - IDs inválidos
-- `404` - Platillo, ingrediente o relación no encontrada
-
----
-
-## Estructura de Datos
-
-### Objeto DishIngredient (Relación Platillo-Ingrediente)
-
-```typescript
-{
-  id: number; // ID de la relación
-  dishId: number; // ID del platillo
-  quantityUsed: number; // Cantidad necesaria
-  ingredient: {
-    id: number; // ID del ingrediente
-    name: string; // Nombre del ingrediente
-    unit: string; // Unidad de medida
-    stock?: number; // Stock disponible (solo en GET)
-    status?: "Available" | "Out of Stock"; // Estado (solo en algunos casos)
-    category?: {
-      id: number; // ID de la categoría
-      name: string; // Nombre de la categoría
-    };
-  };
-}
-```
-
----
-
-## Relaciones con Otros Recursos
-
-- **Platillos**: Las recetas pertenecen a platillos → [Ver documentación](./dishes.md)
-- **Ingredientes**: Las recetas utilizan ingredientes del inventario → [Ver documentación](./ingredients.md)
-
----
-
-## Notas Adicionales
-
-- La información del ingrediente se incluye como un objeto anidado `ingredient` con `id`, `name` y `unit`.
-- Al obtener la receta de un platillo, se incluye el `stock` actual del ingrediente para facilitar la planificación.
-- El campo `category` del ingrediente puede estar presente con información anidada de la categoría.
-- Un platillo puede tener cero o más ingredientes en su receta.
-- No se pueden agregar ingredientes duplicados a la misma receta.
-- La cantidad (`quantityUsed`) representa la cantidad necesaria por porción o unidad del platillo.
-- El endpoint PUT para reemplazar la receta elimina todos los ingredientes existentes y agrega los nuevos.
-- Si se envía un array vacío en PUT, se eliminarán todos los ingredientes de la receta.
-- Las unidades de medida se obtienen automáticamente de la configuración del ingrediente.
-- **Las relaciones se eliminan físicamente**: Al eliminar un ingrediente de la receta, la relación se elimina permanentemente de la base de datos (no usa soft delete).
-- Esta información es útil para calcular costos de platillos y gestionar el inventario.
-- Los campos `createdAt` y `updatedAt` no se incluyen en las respuestas de la API.
-
----
-
-## Ejemplo de Caso de Uso
-
-### Crear una receta completa para un nuevo platillo
-
-1. Primero, crear el platillo:
-
-```http
-POST /api/dishes
-{
-  "name": "Sopa de Pollo",
-  "price": 12.00
-}
-```
-
-2. Luego, agregar la receta completa:
-
-```http
-PUT /api/dishes/10/ingredients
-{
-  "ingredients": [
-    { "ingredient_id": 1, "quantity_used": 0.5 },
-    { "ingredient_id": 2, "quantity_used": 0.2 },
-    { "ingredient_id": 7, "quantity_used": 0.1 }
-  ]
-}
-```
-
-3. Verificar la receta:
-
-```http
-GET /api/dishes/10/ingredients
-```
-
----
-
-[← Volver al índice](../README.md)

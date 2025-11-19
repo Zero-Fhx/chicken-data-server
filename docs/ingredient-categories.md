@@ -1,43 +1,41 @@
 # 📂 Categorías de Ingredientes (Ingredient Categories)
 
-Gestión de categorías para organizar los ingredientes del inventario.
+Gestión de categorías para organizar los ingredientes.
 
-## Descripción
+## 📋 Estructura del Objeto
 
-Este recurso permite administrar las categorías que se utilizan para clasificar y organizar los ingredientes utilizados en el restaurante (por ejemplo: Carnes, Vegetales, Granos, Lácteos, etc.).
+| Campo         | Tipo     | Descripción                                    |
+| :------------ | :------- | :--------------------------------------------- |
+| `id`          | `number` | Identificador único de la categoría.           |
+| `name`        | `string` | Nombre de la categoría.                        |
+| `description` | `string` | Descripción de la categoría.                   |
+| `status`      | `string` | Estado de la categoría: `Active` o `Inactive`. |
 
-## Endpoints Disponibles
+## 🔗 Endpoints
 
-| Método   | Endpoint                         | Descripción                  |
-| -------- | -------------------------------- | ---------------------------- |
-| `GET`    | `/api/ingredient-categories`     | Obtener todas las categorías |
-| `GET`    | `/api/ingredient-categories/:id` | Obtener una categoría por ID |
-| `POST`   | `/api/ingredient-categories`     | Crear una nueva categoría    |
-| `PATCH`  | `/api/ingredient-categories/:id` | Actualizar una categoría     |
-| `DELETE` | `/api/ingredient-categories/:id` | Eliminar una categoría       |
+### 1. Listar Categorías
 
----
+Obtiene una lista paginada de categorías de ingredientes.
 
-## GET /api/ingredient-categories
+**URL:** `/api/ingredient-categories`
+**Método:** `GET`
 
-Obtiene una lista paginada de todas las categorías de ingredientes.
+**Parámetros de Consulta (Query Params):**
 
-### Parámetros de Consulta
+| Parámetro  | Tipo     | Descripción                               |
+| :--------- | :------- | :---------------------------------------- |
+| `page`     | `number` | Número de página (default: 1).            |
+| `pageSize` | `number` | Cantidad por página (default: 10).        |
+| `search`   | `string` | Buscar por nombre o descripción.          |
+| `status`   | `string` | Filtrar por estado (`Active`/`Inactive`). |
 
-| Parámetro  | Tipo     | Obligatorio | Descripción                                |
-| ---------- | -------- | ----------- | ------------------------------------------ |
-| `page`     | `number` | No          | Número de página (por defecto: `1`)        |
-| `pageSize` | `number` | No          | Elementos por página (por defecto: `10`)   |
-| `search`   | `string` | No          | Buscar por nombre o descripción            |
-| `status`   | `string` | No          | Filtrar por estado (`Active` o `Inactive`) |
+**Ejemplo de Solicitud:**
 
-### Ejemplo de Solicitud
-
-```http
-GET /api/ingredient-categories?page=1&pageSize=10&status=Active
+```bash
+curl -X GET "http://localhost:3000/api/ingredient-categories?page=1&pageSize=10"
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
@@ -46,59 +44,40 @@ GET /api/ingredient-categories?page=1&pageSize=10&status=Active
   "data": [
     {
       "id": 1,
-      "name": "Carnes",
-      "description": "Carnes y productos avícolas",
-      "status": "Active"
-    },
-    {
-      "id": 2,
-      "name": "Granos",
-      "description": "Arroz, quinua y otros granos",
-      "status": "Active"
-    },
-    {
-      "id": 3,
-      "name": "Vegetales",
-      "description": "Verduras y hortalizas frescas",
+      "name": "General",
+      "description": "Ingredientes misceláneos o no categorizados que se usan de forma general.",
       "status": "Active"
     }
+    // ...
   ],
   "meta": {
     "pagination": {
       "page": 1,
       "pageSize": 10,
       "pageCount": 1,
-      "total": 3,
+      "total": 10,
       "hasNextPage": false,
       "hasPrevPage": false
-    },
-    "filters": {
-      "status": "Active"
     }
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:59.433Z"
 }
 ```
 
----
+### 2. Obtener Categoría por ID
 
-## GET /api/ingredient-categories/:id
+Obtiene los detalles de una categoría específica.
 
-Obtiene una categoría específica por su ID.
+**URL:** `/api/ingredient-categories/:id`
+**Método:** `GET`
 
-### Parámetros de Ruta
+**Ejemplo de Solicitud:**
 
-| Parámetro | Tipo     | Obligatorio | Descripción        |
-| --------- | -------- | ----------- | ------------------ |
-| `id`      | `number` | Sí          | ID de la categoría |
-
-### Ejemplo de Solicitud
-
-```http
-GET /api/ingredient-categories/1
+```bash
+curl -X GET "http://localhost:3000/api/ingredient-categories/1"
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
@@ -106,210 +85,98 @@ GET /api/ingredient-categories/1
   "message": "Ingredient category retrieved successfully",
   "data": {
     "id": 1,
-    "name": "Carnes",
-    "description": "Carnes y productos avícolas",
+    "name": "General",
+    "description": "Ingredientes misceláneos o no categorizados que se usan de forma general.",
     "status": "Active"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:59.433Z"
 }
 ```
 
-### Códigos de Estado
+### 3. Crear Categoría
 
-- `200` - Categoría encontrada exitosamente
-- `400` - ID inválido
-- `404` - Categoría no encontrada
+Registra una nueva categoría.
 
----
+**URL:** `/api/ingredient-categories`
+**Método:** `POST`
+**Headers:** `Content-Type: application/json`
 
-## POST /api/ingredient-categories
+**Cuerpo de la Solicitud (Body):**
 
-Crea una nueva categoría de ingredientes.
-
-### Cuerpo de la Solicitud
-
-| Campo         | Tipo     | Obligatorio | Descripción                                           |
-| ------------- | -------- | ----------- | ----------------------------------------------------- |
-| `name`        | `string` | Sí          | Nombre de la categoría (máx. 50 caracteres)           |
-| `description` | `string` | No          | Descripción de la categoría                           |
-| `status`      | `string` | No          | Estado: `Active` o `Inactive` (por defecto: `Active`) |
-
-### Validaciones y Restricciones
-
-| Campo         | Validación                                       |
-| ------------- | ------------------------------------------------ |
-| `name`        | Requerido, string no vacío, máximo 50 caracteres |
-| `description` | Opcional, puede ser `null`                       |
-| `status`      | Opcional, debe ser `Active` o `Inactive`         |
-
-### Ejemplo de Solicitud
-
-```http
-POST /api/ingredient-categories
-Content-Type: application/json
-
+```json
 {
-  "name": "Lácteos",
-  "description": "Leche, queso y productos lácteos",
+  "name": "Nueva Categoría",
+  "description": "Descripción de la nueva categoría",
   "status": "Active"
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Ingredient category created successfully",
   "data": {
-    "id": 4,
-    "name": "Lácteos",
-    "description": "Leche, queso y productos lácteos",
+    "id": 11,
+    "name": "Nueva Categoría",
+    "description": "Descripción de la nueva categoría",
     "status": "Active"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:59.433Z"
 }
 ```
 
-### Códigos de Estado
+### 4. Actualizar Categoría
 
-- `201` - Categoría creada exitosamente
-- `400` - Datos de entrada inválidos
+Actualiza los datos de una categoría existente.
 
----
+**URL:** `/api/ingredient-categories/:id`
+**Método:** `PATCH`
+**Headers:** `Content-Type: application/json`
 
-## PATCH /api/ingredient-categories/:id
+**Cuerpo de la Solicitud (Body):**
 
-Actualiza una categoría existente. Solo se actualizan los campos proporcionados.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción                     |
-| --------- | -------- | ----------- | ------------------------------- |
-| `id`      | `number` | Sí          | ID de la categoría a actualizar |
-
-### Cuerpo de la Solicitud
-
-| Campo         | Tipo     | Obligatorio | Descripción                         |
-| ------------- | -------- | ----------- | ----------------------------------- |
-| `name`        | `string` | No          | Nuevo nombre de la categoría        |
-| `description` | `string` | No          | Nueva descripción                   |
-| `status`      | `string` | No          | Nuevo estado: `Active` o `Inactive` |
-
-### Validaciones y Restricciones
-
-| Campo         | Validación                                                           |
-| ------------- | -------------------------------------------------------------------- |
-| `name`        | Si se proporciona, debe ser un string no vacío, máximo 50 caracteres |
-| `description` | Si se proporciona, puede ser `null`                                  |
-| `status`      | Si se proporciona, debe ser `Active` o `Inactive`                    |
-
-### Ejemplo de Solicitud
-
-```http
-PATCH /api/ingredient-categories/4
-Content-Type: application/json
-
+```json
 {
-  "description": "Leche, queso, mantequilla y derivados lácteos"
+  "description": "Descripción actualizada"
 }
 ```
 
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Ingredient category updated successfully",
   "data": {
-    "id": 4,
-    "name": "Lácteos",
-    "description": "Leche, queso, mantequilla y derivados lácteos",
+    "id": 1,
+    "name": "General",
+    "description": "Descripción actualizada",
     "status": "Active"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:59.433Z"
 }
 ```
 
-### Códigos de Estado
+### 5. Eliminar Categoría
 
-- `200` - Categoría actualizada exitosamente
-- `400` - Datos de entrada inválidos o ID inválido
-- `404` - Categoría no encontrada
+Marca una categoría como eliminada (soft delete).
 
----
+**URL:** `/api/ingredient-categories/:id`
+**Método:** `DELETE`
 
-## DELETE /api/ingredient-categories/:id
-
-Elimina una categoría del sistema.
-
-### Parámetros de Ruta
-
-| Parámetro | Tipo     | Obligatorio | Descripción                   |
-| --------- | -------- | ----------- | ----------------------------- |
-| `id`      | `number` | Sí          | ID de la categoría a eliminar |
-
-### Ejemplo de Solicitud
-
-```http
-DELETE /api/ingredient-categories/4
-```
-
-### Ejemplo de Respuesta
+**Ejemplo de Respuesta:**
 
 ```json
 {
   "success": true,
   "message": "Ingredient category deleted successfully",
   "data": {
-    "id": 4,
-    "name": "Lácteos",
-    "description": "Leche, queso, mantequilla y derivados lácteos",
-    "status": "Active"
+    "id": 1,
+    "name": "General",
+    "status": "Inactive"
   },
-  "timestamp": "2025-10-20T19:28:47.212Z"
+  "timestamp": "2025-11-19T16:10:59.433Z"
 }
 ```
-
-### Códigos de Estado
-
-- `200` - Categoría eliminada exitosamente
-- `400` - ID inválido
-- `404` - Categoría no encontrada
-
----
-
-## Estructura de Datos
-
-### Objeto IngredientCategory
-
-```typescript
-{
-  id: number; // ID único de la categoría
-  name: string; // Nombre de la categoría
-  description: string | null; // Descripción detallada
-  status: "Active" | "Inactive"; // Estado de la categoría
-}
-```
-
----
-
-## Relaciones con Otros Recursos
-
-- **Ingredientes**: Los ingredientes pertenecen a categorías → [Ver documentación](./ingredients.md)
-
----
-
-## Notas Adicionales
-
-- El campo `description` puede ser `null` si no se proporciona.
-- Existe una categoría por defecto con ID: 1 que se asigna a los ingredientes sin categoría específica.
-- Al eliminar una categoría, los ingredientes asociados no se eliminan, pero quedarán sin categoría válida.
-- Se recomienda marcar categorías como `Inactive` en lugar de eliminarlas para mantener la integridad de los datos.
-- Las categorías ayudan a organizar el inventario y facilitan la búsqueda de ingredientes.
-- **Los datos no se eliminan físicamente**: Al eliminar una categoría, se marca con `deleted_at` (soft delete) pero permanece en la base de datos para mantener el historial.
-- Los campos `createdAt`, `updatedAt` y `deleted_at` no se incluyen en las respuestas de la API.
-
----
-
-[← Volver al índice](../README.md)
