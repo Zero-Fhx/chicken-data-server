@@ -258,6 +258,6 @@ GET /api/dishes?status=Active&minPrice=10&maxPrice=50
 
 ---
 
-**Versión:** 2.1.0
-**Descripción:** Mejora en la estructura de endpoints y documentación.
+**Versión:** 2.1.0  
+**Descripción:** Mejora en la estructura de endpoints y documentación.  
 **Última actualización:** Noviembre 2025
